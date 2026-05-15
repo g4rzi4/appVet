@@ -27,6 +27,8 @@ router.post('/', adminOnly, (req, res) => {
         return res.status(400).json({ error: 'El email debe terminar en @vetcare.com' });
     if (!req.body.password)
         return res.status(400).json({ error: 'La contraseña es requerida' });
+    if (req.body.password.length < 8 || !/[A-Z]/.test(req.body.password))
+        return res.status(400).json({ error: 'La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula' });
 
     const db   = read();
     const item = { ...req.body, id: uid() };

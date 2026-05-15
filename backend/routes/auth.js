@@ -11,7 +11,7 @@ router.post('/login', (req, res) => {
         return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
     // Admin
-    if (email === 'admin@vetcare.com' && password === 'admin123') {
+    if (email === 'admin@vetcare.com' && password === 'Admin123') {
         const user  = { id: 'admin', nombre: 'Admin', apellido: 'VetCare', email };
         const token = jwt.sign({ ...user, role: 'admin' }, SECRET, { expiresIn: '24h' });
         return res.json({ token, user, role: 'admin' });
@@ -43,6 +43,9 @@ router.post('/register', (req, res) => {
     const { nombre, apellido, email, password, telefono, direccion } = req.body;
     if (!nombre || !email || !password)
         return res.status(400).json({ error: 'Nombre, email y contraseña son requeridos' });
+
+    if (password.length < 8 || !/[A-Z]/.test(password))
+        return res.status(400).json({ error: 'La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula' });
 
     if (email === 'admin@vetcare.com' || email.endsWith('@vetcare.com'))
         return res.status(400).json({ error: 'Email no disponible para registro público' });

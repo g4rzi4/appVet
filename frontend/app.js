@@ -82,6 +82,8 @@ function timeSlots() {
 
 function findIn(arr, id) { return (arr || []).find(x => x.id === id) || null; }
 
+function validPassword(p) { return p.length >= 8 && /[A-Z]/.test(p); }
+
 const ESPECIALIDADES = ['Medicina General','Cirugía General','Medicina Interna','Dermatología','Cardiología','Oftalmología','Odontología','Traumatología','Oncología','Neurología'];
 const TAMANOS        = ['Muy Pequeño','Pequeño','Mediano','Grande','Extra Grande'];
 const ESPECIES       = ['Perro','Gato','Conejo','Ave','Reptil','Pez','Hámster'];
@@ -135,6 +137,10 @@ const Auth = {
             telefono:  document.getElementById('reg-telefono').value.trim(),
             direccion: document.getElementById('reg-direccion').value.trim(),
         };
+        if (!validPassword(body.password)) {
+            Toast.show('La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula', 'error');
+            return;
+        }
         Loading.show();
         try {
             const data = await API.post('/auth/register', body);
@@ -717,6 +723,10 @@ const Vets = {
             Toast.show('El email debe terminar en @vetcare.com', 'error');
             return;
         }
+        if (data.password && !validPassword(data.password)) {
+            Toast.show('La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula', 'error');
+            return;
+        }
         if (!data.password) delete data.password;
         Loading.show();
         try {
@@ -756,7 +766,7 @@ function vetForm(v) {
         <div class="form-group"><label>Horario</label><input name="horario" type="text" value="${h(v.horario||'')}" placeholder="Ej: Lun-Vie 8:00-17:00"></div>
         <div class="form-group">
             <label>${v.id ? 'Nueva Contraseña (vacío = mantener)' : 'Contraseña de acceso'}</label>
-            <input name="password" type="password" ${!v.id?'required minlength="6"':''} placeholder="Mínimo 6 caracteres">
+            <input name="password" type="password" ${!v.id?'required minlength="8"':''} placeholder="Mínimo 8 caracteres, una mayúscula">
         </div>
         <input type="hidden" name="id" value="${h(v.id||'')}">
         <div class="modal-footer">
@@ -780,6 +790,10 @@ const Duenos = {
     async save(e) {
         e.preventDefault();
         const data = fd(e.target);
+        if (data.password && !validPassword(data.password)) {
+            Toast.show('La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula', 'error');
+            return;
+        }
         if (!data.password) delete data.password;
         Loading.show();
         try {
@@ -794,6 +808,10 @@ const Duenos = {
     async saveSelf(e) {
         e.preventDefault();
         const data = fd(e.target);
+        if (data.password && !validPassword(data.password)) {
+            Toast.show('La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula', 'error');
+            return;
+        }
         if (!data.password) delete data.password;
         Loading.show();
         try {
@@ -829,7 +847,7 @@ function duenoForm(d) {
         <div class="form-group"><label>Dirección</label><input name="direccion" type="text" value="${h(d.direccion||'')}"></div>
         <div class="form-group">
             <label>${d.id ? 'Nueva Contraseña (vacío = mantener)' : 'Contraseña'}</label>
-            <input name="password" type="password" ${!d.id?'required minlength="6"':''} placeholder="Mínimo 6 caracteres">
+            <input name="password" type="password" ${!d.id?'required minlength="8"':''} placeholder="Mínimo 8 caracteres, una mayúscula">
         </div>
         <input type="hidden" name="id" value="${h(d.id||'')}">
         <div class="modal-footer">
@@ -847,7 +865,7 @@ function selfForm(u) {
         </div>
         <div class="form-group"><label>Teléfono</label><input name="telefono" type="tel" value="${h(u.telefono||'')}"></div>
         <div class="form-group"><label>Dirección</label><input name="direccion" type="text" value="${h(u.direccion||'')}"></div>
-        <div class="form-group"><label>Nueva Contraseña (vacío = mantener)</label><input name="password" type="password" minlength="6" placeholder="Mínimo 6 caracteres"></div>
+        <div class="form-group"><label>Nueva Contraseña (vacío = mantener)</label><input name="password" type="password" minlength="8" placeholder="Mínimo 8 caracteres, una mayúscula"></div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
             <button type="submit" class="btn btn-primary">Guardar</button>

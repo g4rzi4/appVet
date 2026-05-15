@@ -36,7 +36,6 @@
                 <button type="submit" class="btn btn-primary w-full">Ingresar</button>
             </form>
             <p class="auth-switch">¿No tienes cuenta? <a href="#" onclick="showPanel('register-panel');return false">Regístrate como dueño</a></p>
-            <div class="auth-hint">Admin: admin@vetcare.com / admin123</div>
         </div>
 
         <div id="register-panel" style="display:none">
@@ -49,7 +48,7 @@
                 <div class="form-group"><label>Email</label><input type="email" id="reg-email" required></div>
                 <div class="form-group"><label>Teléfono</label><input type="tel" id="reg-telefono"></div>
                 <div class="form-group"><label>Dirección</label><input type="text" id="reg-direccion"></div>
-                <div class="form-group"><label>Contraseña</label><input type="password" id="reg-password" required minlength="6" placeholder="Mínimo 6 caracteres"></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" id="reg-password" required minlength="8" placeholder="Mínimo 8 caracteres, una mayúscula"></div>
                 <button type="submit" class="btn btn-primary w-full">Crear Cuenta</button>
             </form>
             <p class="auth-switch">¿Ya tienes cuenta? <a href="#" onclick="showPanel('login-panel');return false">Inicia sesión</a></p>
