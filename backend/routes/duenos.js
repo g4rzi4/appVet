@@ -1,0 +1,67 @@
+const express        = require('express');
+const router         = express.Router();
+const { read, write, uid }       = require('../data/db');
+const { requireAuth, adminOnly } = require('../middleware/auth');
+
+router.use(requireAuth);
+
+const strip = ({ password, ...rest }) => rest;
+
+// Admin: todos. Owner: solo el propio
+router.get('/', (req, res) => {
+    const db = read();
+    if (req.user.role === 'admin') return res.json(db.duenos.map(strip));
+    const own = db.duenos.find(d => d.id === req.user.id);
+    res.json(own ? [strip(own)] : []);
+});
+
+router.get('/:id', (req, res) => {
+    if (req.user.role !== 'admin' && req.user.id !== req.params.id)
+        return res.status(403).json({ error: 'Sin permiso' });
+    const item = read().duenos.find(d => d.id === req.params.id);
+    if (!item) return res.status(404).json({ error: 'No encontrado' });
+    res.json(strip(item));
+});
+
+router.post('/', adminOnly, (req, res) => {
+    const db = read();
+    if (db.duenos.find(d => d.email === req.body.email))
+        return res.status(400).json({ error: 'Email ya registrado' });
+    const item = { ...req.body, id: uid() };
+    db.duenos.push(item);
+    write(db);
+    res.status(201).json(strip(item));
+});
+
+// Admin: cualquiera. Owner: solo el propio
+router.put('/:id', (req, res) => {
+    if (req.user.role !== 'admin' && req.user.id !== req.params.id)
+        return res.status(403).json({ error: 'Sin permiso' });
+
+    const db  = read();
+    const idx = db.duenos.findIndex(d => d.id === req.params.id);
+    if (idx < 0) return res.status(404).json({ error: 'No encontrado' });
+
+    const upd = { ...db.duenos[idx], ...req.body, id: req.params.id };
+    if (!req.body.password) upd.password = db.duenos[idx].password; // mantener si no se envía
+    db.duenos[idx] = upd;
+    write(db);
+    res.json(strip(upd));
+});
+
+// Solo admin puede eliminar dueños
+router.delete('/:id', adminOnly, (req, res) => {
+    const db  = read();
+    const idx = db.duenos.findIndex(d => d.id === req.params.id);
+    if (idx < 0) return res.status(404).json({ error: 'No encontrado' });
+
+    // Eliminar mascotas y citas relacionadas
+    const petIds = db.mascotas.filter(m => m.duenoId === req.params.id).map(m => m.id);
+    db.mascotas = db.mascotas.filter(m => m.duenoId !== req.params.id);
+    db.citas    = db.citas.filter(c => !petIds.includes(c.mascotaId));
+    db.duenos.splice(idx, 1);
+    write(db);
+    res.json({ ok: true });
+});
+
+module.exports = router;
