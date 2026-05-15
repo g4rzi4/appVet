@@ -1,22 +1,27 @@
-const express        = require('express');
-const router         = express.Router();
-const { read, write, uid }       = require('../data/db');
-const { requireAuth, adminOnly } = require('../middleware/auth');
+const express              = require('express');
+const router               = express.Router();
+const { read, write, uid }        = require('../data/db');
+const { requireAuth, adminOnly }  = require('../middleware/auth');
 
 router.use(requireAuth);
 
 const strip = ({ password, ...rest }) => rest;
 
-// Admin: todos. Owner: solo el propio
+// GET: admin=todos, vet=dueños de sus pacientes, owner=solo el propio
 router.get('/', (req, res) => {
     const db = read();
     if (req.user.role === 'admin') return res.json(db.duenos.map(strip));
+    if (req.user.role === 'vet') {
+        const petIds   = db.citas.filter(c => c.veterinarioId === req.user.id).map(c => c.mascotaId);
+        const duenoIds = [...new Set(db.mascotas.filter(m => petIds.includes(m.id)).map(m => m.duenoId))];
+        return res.json(db.duenos.filter(d => duenoIds.includes(d.id)).map(strip));
+    }
     const own = db.duenos.find(d => d.id === req.user.id);
     res.json(own ? [strip(own)] : []);
 });
 
 router.get('/:id', (req, res) => {
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id)
+    if (req.user.role === 'owner' && req.user.id !== req.params.id)
         return res.status(403).json({ error: 'Sin permiso' });
     const item = read().duenos.find(d => d.id === req.params.id);
     if (!item) return res.status(404).json({ error: 'No encontrado' });
@@ -33,9 +38,10 @@ router.post('/', adminOnly, (req, res) => {
     res.status(201).json(strip(item));
 });
 
-// Admin: cualquiera. Owner: solo el propio
+// Admin=cualquiera, owner=solo el propio, vet=sin permiso
 router.put('/:id', (req, res) => {
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id)
+    if (req.user.role === 'vet') return res.status(403).json({ error: 'Sin permiso' });
+    if (req.user.role === 'owner' && req.user.id !== req.params.id)
         return res.status(403).json({ error: 'Sin permiso' });
 
     const db  = read();
@@ -43,22 +49,20 @@ router.put('/:id', (req, res) => {
     if (idx < 0) return res.status(404).json({ error: 'No encontrado' });
 
     const upd = { ...db.duenos[idx], ...req.body, id: req.params.id };
-    if (!req.body.password) upd.password = db.duenos[idx].password; // mantener si no se envía
+    if (!req.body.password) upd.password = db.duenos[idx].password;
     db.duenos[idx] = upd;
     write(db);
     res.json(strip(upd));
 });
 
-// Solo admin puede eliminar dueños
 router.delete('/:id', adminOnly, (req, res) => {
-    const db  = read();
-    const idx = db.duenos.findIndex(d => d.id === req.params.id);
+    const db     = read();
+    const idx    = db.duenos.findIndex(d => d.id === req.params.id);
     if (idx < 0) return res.status(404).json({ error: 'No encontrado' });
 
-    // Eliminar mascotas y citas relacionadas
     const petIds = db.mascotas.filter(m => m.duenoId === req.params.id).map(m => m.id);
-    db.mascotas = db.mascotas.filter(m => m.duenoId !== req.params.id);
-    db.citas    = db.citas.filter(c => !petIds.includes(c.mascotaId));
+    db.mascotas  = db.mascotas.filter(m => m.duenoId !== req.params.id);
+    db.citas     = db.citas.filter(c => !petIds.includes(c.mascotaId));
     db.duenos.splice(idx, 1);
     write(db);
     res.json({ ok: true });

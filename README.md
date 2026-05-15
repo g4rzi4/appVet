@@ -26,7 +26,9 @@ npm start
 
 Abrir en el navegador: **http://localhost:3001**
 
-> Para desarrollo con recarga automática usar `npm run dev` (requiere nodemon, ya incluido en devDependencies).
+> Para desarrollo con recarga automática usar `npm run dev` (nodemon ya incluido en devDependencies).
+
+> Si ya existía un `db.json` de una versión anterior, elimínalo antes de iniciar para que se apliquen los datos de semilla actualizados.
 
 ---
 
@@ -37,17 +39,17 @@ appVet/
 ├── frontend/               # Interfaz de usuario (HTML + CSS + JS)
 │   ├── index.html
 │   ├── style.css
-│   └── app.js              # Lógica UI con fetch() y async/await
+│   └── app.js              # Lógica UI — fetch() y async/await
 └── backend/                # API REST (Node.js + Express)
     ├── server.js           # Punto de entrada, sirve el frontend y la API
     ├── package.json
     ├── data/
-    │   ├── db.js           # Lectura/escritura del archivo de datos
-    │   └── db.json         # Base de datos (se crea automáticamente al iniciar)
+    │   ├── db.js           # Lectura/escritura + migración automática
+    │   └── db.json         # Base de datos JSON (se crea al iniciar)
     ├── middleware/
-    │   └── auth.js         # Autenticación JWT
+    │   └── auth.js         # Verificación JWT + helpers adminOnly
     └── routes/
-        ├── auth.js         # POST /api/auth/login  |  /api/auth/register
+        ├── auth.js         # POST /api/auth/login | /api/auth/register
         ├── veterinarios.js # CRUD /api/veterinarios
         ├── duenos.js       # CRUD /api/duenos
         ├── mascotas.js     # CRUD /api/mascotas
@@ -58,69 +60,129 @@ appVet/
 
 ## Accesos de prueba
 
-| Rol           | Email                  | Contraseña |
-|---------------|------------------------|------------|
-| Administrador | admin@vetcare.com      | admin123   |
-| Dueño demo    | ana@example.com        | 123456     |
+| Rol           | Email                  | Contraseña | Registro       |
+|---------------|------------------------|------------|----------------|
+| Administrador | admin@vetcare.com      | admin123   | Hardcoded      |
+| Veterinario   | carlos@vetcare.com     | vet123     | Solo via admin |
+| Veterinario   | maria@vetcare.com      | vet123     | Solo via admin |
+| Veterinario   | roberto@vetcare.com    | vet123     | Solo via admin |
+| Dueño demo    | ana@example.com        | 123456     | Auto-registro  |
 
-> Los dueños pueden registrarse desde la pantalla de login.
+> Los veterinarios **solo pueden ser registrados por el administrador**. Sus emails deben terminar en `@vetcare.com`.  
+> Los dueños pueden registrarse libremente desde la pantalla de login (no se permiten emails `@vetcare.com`).
+
+---
+
+## Roles y permisos
+
+### Administrador
+- CRUD completo sobre todas las entidades
+- Crea veterinarios asignándoles email `@vetcare.com` y contraseña
+- Puede cambiar el estado de cualquier cita
+
+### Veterinario
+- Accede con su email `@vetcare.com` y la contraseña asignada por el admin
+- Ve su **calendario mensual** con las citas pendientes y confirmadas
+- Puede **confirmar** (pendiente → confirmada) y **completar** (confirmada → completada) sus citas
+- Ve los **expedientes** de sus pacientes: datos del animal, dueño e historial de citas
+
+### Dueño
+- Se registra libremente desde el login
+- Gestiona sus propias mascotas (CRUD)
+- Agenda y cancela citas para sus mascotas
+- Edita su perfil personal
 
 ---
 
 ## API REST
 
-Todas las rutas requieren un token JWT en el header `Authorization: Bearer <token>`.
+Todas las rutas (excepto `/api/auth/*`) requieren `Authorization: Bearer <token>`.
 
-| Método | Ruta                      | Acceso        |
-|--------|---------------------------|---------------|
-| POST   | /api/auth/login           | Público       |
-| POST   | /api/auth/register        | Público       |
-| GET    | /api/veterinarios         | Todos         |
-| POST   | /api/veterinarios         | Admin         |
-| PUT    | /api/veterinarios/:id     | Admin         |
-| DELETE | /api/veterinarios/:id     | Admin         |
-| GET    | /api/duenos               | Admin / propio|
-| POST   | /api/duenos               | Admin         |
-| PUT    | /api/duenos/:id           | Admin / propio|
-| DELETE | /api/duenos/:id           | Admin         |
-| GET    | /api/mascotas             | Admin / propias|
-| POST   | /api/mascotas             | Todos         |
-| PUT    | /api/mascotas/:id         | Admin / propio|
-| DELETE | /api/mascotas/:id         | Admin / propio|
-| GET    | /api/citas                | Admin / propias|
-| POST   | /api/citas                | Todos         |
-| PUT    | /api/citas/:id            | Admin / propio|
-| DELETE | /api/citas/:id            | Admin / propio|
+| Método | Ruta                  | Admin | Vet              | Dueño          |
+|--------|-----------------------|-------|------------------|----------------|
+| POST   | /api/auth/login       | ✓     | ✓                | ✓              |
+| POST   | /api/auth/register    | ✓     | ✓                | ✓              |
+| GET    | /api/veterinarios     | todos | todos            | todos          |
+| POST   | /api/veterinarios     | ✓     | ✗                | ✗              |
+| PUT    | /api/veterinarios/:id | ✓     | ✗                | ✗              |
+| DELETE | /api/veterinarios/:id | ✓     | ✗                | ✗              |
+| GET    | /api/duenos           | todos | sus pacientes    | propio         |
+| POST   | /api/duenos           | ✓     | ✗                | ✗              |
+| PUT    | /api/duenos/:id       | ✓     | ✗                | propio         |
+| DELETE | /api/duenos/:id       | ✓     | ✗                | ✗              |
+| GET    | /api/mascotas         | todas | sus pacientes    | propias        |
+| POST   | /api/mascotas         | ✓     | ✗                | ✓ (propias)    |
+| PUT    | /api/mascotas/:id     | ✓     | ✗                | ✓ (propias)    |
+| DELETE | /api/mascotas/:id     | ✓     | ✗                | ✓ (propias)    |
+| GET    | /api/citas            | todas | las suyas        | sus mascotas   |
+| POST   | /api/citas            | ✓     | ✗                | ✓ (sus mascotas)|
+| PUT    | /api/citas/:id        | ✓     | solo `estado`    | ✓ (sus mascotas)|
+| DELETE | /api/citas/:id        | ✓     | ✗                | ✓ (sus mascotas)|
 
 ---
 
-## Modelo de datos — Mascota
+## Modelos de datos
 
+### Mascota
 ```json
 {
-  "id":      "abc123",
-  "nombre":  "Max",
-  "especie": "Perro",
-  "raza":    "Labrador Retriever",
-  "color":   "Dorado",
-  "edad":    3,
-  "tamano":  "Grande",
-  "duenoId": "o1"
+  "id":       "m1",
+  "nombre":   "Max",
+  "especie":  "Perro",
+  "raza":     "Labrador Retriever",
+  "color":    "Dorado",
+  "edad":     3,
+  "tamano":   "Grande",
+  "duenoId":  "o1"
 }
 ```
 
+### Veterinario
+```json
+{
+  "id":           "v1",
+  "nombre":       "Carlos",
+  "apellido":     "García",
+  "especialidad": "Cirugía General",
+  "telefono":     "555-0101",
+  "email":        "carlos@vetcare.com",
+  "horario":      "Lun-Vie 8:00-17:00",
+  "password":     "vet123"
+}
+```
+
+### Cita
+```json
+{
+  "id":             "c1",
+  "mascotaId":      "m1",
+  "veterinarioId":  "v1",
+  "fecha":          "2026-05-20",
+  "hora":           "10:00",
+  "motivo":         "Vacunación anual",
+  "estado":         "pendiente",
+  "notas":          ""
+}
+```
+
+Estados de cita: `pendiente` → `confirmada` → `completada` | `cancelada`
+
 ---
 
-## Funcionalidades
+## Funcionalidades por vista
 
 ### Vista Administrador
-- **Dashboard** — estadísticas en tiempo real (veterinarios, dueños, mascotas, citas pendientes)
-- **Veterinarios** — CRUD completo (nombre, especialidad, teléfono, email, horario)
-- **Dueños** — CRUD completo, muestra cantidad de mascotas por dueño
+- **Dashboard** — estadísticas en tiempo real: veterinarios, dueños, mascotas, citas pendientes
+- **Veterinarios** — CRUD completo; email obligatorio `@vetcare.com`; contraseña de acceso asignada por el admin
+- **Dueños** — CRUD completo; muestra cantidad de mascotas por dueño
 - **Mascotas** — CRUD completo con referencia al dueño
-- **Citas** — CRUD completo con estados: `pendiente | confirmada | completada | cancelada`
+- **Citas** — CRUD completo; selector de estado completo
+
+### Vista Veterinario
+- **Calendario** — cuadrícula mensual con navegación; puntos de color por estado (🟠 pendiente, 🔵 confirmada); detalle del día al hacer clic; botones Confirmar y Completar inline; panel de próximas citas
+- **Mis Pacientes** — expedientes de cada mascota atendida: datos del animal, dueño, teléfono e historial de citas
 
 ### Vista Dueño
-- **Mis Mascotas** — tarjetas visuales, CRUD solo sobre las propias
-- **Mis Citas** — vista cronológica, agendar y cancelar citas
-- **Mi Perfil** — editar datos personales
+- **Mis Mascotas** — tarjetas visuales; CRUD solo sobre las propias
+- **Mis Citas** — vista cronológica; agendar nuevas citas (estado fijo: pendiente); cancelar citas pendientes
+- **Mi Perfil** — editar nombre, teléfono, dirección y contraseña

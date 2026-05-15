@@ -30,7 +30,8 @@ const API = {
 /* =============================================
    ESTADO GLOBAL
    ============================================= */
-let state = { user: null, role: null, view: null };
+let state    = { user: null, role: null, view: null };
+let _calData = { citas: [], pets: [], duenos: [], year: null, month: null, selectedDay: null };
 
 /* =============================================
    LOADING OVERLAY
@@ -182,7 +183,7 @@ async function bootApp() {
     document.getElementById('app-shell').style.display   = 'flex';
     renderSidebar();
     renderUserInfo();
-    await navigate(state.role === 'admin' ? 'dashboard' : 'misMascotas');
+    await navigate(state.role === 'admin' ? 'dashboard' : state.role === 'vet' ? 'calendario' : 'misMascotas');
 }
 
 /* =============================================
@@ -201,7 +202,11 @@ function renderSidebar() {
         {id:'misCitas',    icon:'📅', label:'Mis Citas'},
         {id:'perfil',      icon:'👤', label:'Mi Perfil'},
     ];
-    const items = state.role === 'admin' ? adminItems : ownerItems;
+    const vetItems = [
+        {id:'calendario',   icon:'📅', label:'Calendario'},
+        {id:'misPacientes', icon:'🐾', label:'Mis Pacientes'},
+    ];
+    const items = state.role === 'admin' ? adminItems : state.role === 'vet' ? vetItems : ownerItems;
     document.getElementById('sidebar-nav').innerHTML = items.map(it => `
         <button class="nav-item" id="nav-${it.id}" onclick="navigate('${it.id}')">
             <span class="nav-icon">${it.icon}</span><span>${it.label}</span>
@@ -220,6 +225,7 @@ const PAGE_TITLES = {
     dashboard:'Dashboard', veterinarios:'Veterinarios', duenos:'Dueños',
     mascotas:'Mascotas', citas:'Citas',
     misMascotas:'Mis Mascotas', misCitas:'Mis Citas', perfil:'Mi Perfil',
+    calendario:'Calendario', misPacientes:'Mis Pacientes',
 };
 
 async function navigate(view) {
@@ -241,6 +247,128 @@ async function navigate(view) {
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
+}
+
+/* =============================================
+   HELPERS DEL CALENDARIO
+   ============================================= */
+function buildCalGrid() {
+    const { citas, year, month } = _calData;
+    const firstDow  = (new Date(year, month, 1).getDay() + 6) % 7; // lunes=0
+    const daysInMon = new Date(year, month + 1, 0).getDate();
+    const todayD    = new Date();
+    const monthName = new Date(year, month).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+    const byDay = {};
+    citas.forEach(c => { if (!byDay[c.fecha]) byDay[c.fecha] = []; byDay[c.fecha].push(c); });
+
+    let cells = '';
+    for (let i = 0; i < firstDow; i++) cells += '<div class="cal-day empty"></div>';
+    for (let d = 1; d <= daysInMon; d++) {
+        const dateStr  = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const isToday  = todayD.getFullYear()===year && todayD.getMonth()===month && todayD.getDate()===d;
+        const isSel    = _calData.selectedDay === dateStr;
+        const dayCitas = byDay[dateStr] || [];
+        const pend     = dayCitas.filter(c => c.estado==='pendiente').length;
+        const conf     = dayCitas.filter(c => c.estado==='confirmada').length;
+        cells += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''} ${dayCitas.length?'has-appts':''}"
+                       onclick="calSelectDay('${dateStr}')">
+            <span class="cal-day-num">${d}</span>
+            <div class="cal-dots">
+                ${pend ? `<span class="cal-dot orange" title="${pend} pendiente(s)"></span>` : ''}
+                ${conf ? `<span class="cal-dot blue"   title="${conf} confirmada(s)"></span>` : ''}
+            </div>
+        </div>`;
+    }
+
+    return `
+        <div class="cal-nav">
+            <button onclick="calPrev()">‹</button>
+            <span>${monthName}</span>
+            <button onclick="calNext()">›</button>
+        </div>
+        <div class="cal-grid">
+            <div class="cal-dow">Lu</div><div class="cal-dow">Ma</div><div class="cal-dow">Mi</div>
+            <div class="cal-dow">Ju</div><div class="cal-dow">Vi</div><div class="cal-dow">Sá</div>
+            <div class="cal-dow">Do</div>
+            ${cells}
+        </div>
+        <div class="cal-legend">
+            <span><span class="cal-dot orange" style="display:inline-block"></span> Pendiente</span>
+            <span><span class="cal-dot blue"   style="display:inline-block"></span> Confirmada</span>
+        </div>`;
+}
+
+function buildDayDetail(dateStr) {
+    const { citas, pets, duenos } = _calData;
+    const day = citas.filter(c => c.fecha === dateStr).sort((a,b) => a.hora.localeCompare(b.hora));
+    if (!day.length) return '<p class="no-appts">Sin citas para este día.</p>';
+
+    return day.map(c => {
+        const pet   = findIn(pets, c.mascotaId);
+        const dueno = pet ? findIn(duenos, pet.duenoId) : null;
+        const canConfirm    = c.estado === 'pendiente';
+        const canComplete   = c.estado === 'confirmada';
+        const canReschedule = c.estado === 'pendiente' || c.estado === 'confirmada';
+        return `<div class="appt-item">
+            <div class="appt-time">${h(c.hora)}</div>
+            <div class="appt-info">
+                <div class="appt-pet">${pet ? petEmoji(pet.especie)+' '+h(pet.nombre) : '-'}</div>
+                <div class="appt-owner">${dueno ? h(dueno.nombre)+' '+h(dueno.apellido) : ''}</div>
+                <div class="appt-motivo">${h(c.motivo)}</div>
+            </div>
+            <div class="appt-side">
+                ${estadoBadge(c.estado)}
+                ${canConfirm    ? `<button class="btn btn-primary btn-sm" onclick="Appts.confirm('${c.id}')">Confirmar</button>` : ''}
+                ${canComplete   ? `<button class="btn btn-success btn-sm" onclick="Appts.complete('${c.id}')">Completar</button>` : ''}
+                ${canReschedule ? `<button class="btn btn-ghost btn-sm"   onclick="Appts.openReschedule('${c.id}')">Reprogramar</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function buildUpcoming(citas, pets, duenos) {
+    const upcomingAll = citas
+        .filter(c => c.fecha >= today() && ['pendiente','confirmada'].includes(c.estado))
+        .sort((a,b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora))
+        .slice(0, 8);
+    if (!upcomingAll.length) return '<p class="no-appts">Sin citas próximas.</p>';
+    return upcomingAll.map(c => {
+        const pet = findIn(pets, c.mascotaId);
+        return `<div class="appt-item">
+            <div class="appt-time" style="min-width:70px;font-size:13px">
+                <div style="font-weight:700">${dayOf(c.fecha)} ${monthOf(c.fecha)}</div>
+                <div style="color:var(--text-muted)">${h(c.hora)}</div>
+            </div>
+            <div class="appt-info">
+                <div class="appt-pet">${pet ? petEmoji(pet.especie)+' '+h(pet.nombre) : '-'}</div>
+                <div class="appt-motivo">${h(c.motivo)}</div>
+            </div>
+            <div>${estadoBadge(c.estado)}</div>
+        </div>`;
+    }).join('');
+}
+
+function calSelectDay(dateStr) {
+    _calData.selectedDay = dateStr;
+    document.getElementById('cal-day-detail').innerHTML = buildDayDetail(dateStr);
+    document.getElementById('cal-grid-wrap').innerHTML  = buildCalGrid();
+}
+
+function calPrev() {
+    _calData.month--;
+    if (_calData.month < 0) { _calData.month = 11; _calData.year--; }
+    _calData.selectedDay = null;
+    document.getElementById('cal-grid-wrap').innerHTML = buildCalGrid();
+    document.getElementById('cal-day-detail').innerHTML = '<p class="no-appts">Selecciona un día en el calendario.</p>';
+}
+
+function calNext() {
+    _calData.month++;
+    if (_calData.month > 11) { _calData.month = 0; _calData.year++; }
+    _calData.selectedDay = null;
+    document.getElementById('cal-grid-wrap').innerHTML = buildCalGrid();
+    document.getElementById('cal-day-detail').innerHTML = '<p class="no-appts">Selecciona un día en el calendario.</p>';
 }
 
 /* =============================================
@@ -505,6 +633,72 @@ const Views = {
                 <div class="profile-field-value">${h(u.direccion||'No registrada')}</div></div>
         </div>`);
     },
+
+    async calendario() {
+        const [citas, pets, duenos] = await Promise.all([
+            API.get('/citas'), API.get('/mascotas'), API.get('/duenos'),
+        ]);
+        const now = new Date();
+        _calData = { citas, pets, duenos, year: now.getFullYear(), month: now.getMonth(), selectedDay: null };
+
+        vc(`<div class="cal-layout">
+            <div>
+                <div class="card" style="min-width:310px">
+                    <div id="cal-grid-wrap">${buildCalGrid()}</div>
+                </div>
+            </div>
+            <div style="flex:1;min-width:0">
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:16px">Citas del día</div>
+                    <div id="cal-day-detail"><p class="no-appts">Selecciona un día en el calendario.</p></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:16px">Próximas citas</div>
+                    ${buildUpcoming(citas, pets, duenos)}
+                </div>
+            </div>
+        </div>`);
+    },
+
+    async misPacientes() {
+        const [citas, pets, duenos] = await Promise.all([
+            API.get('/citas'), API.get('/mascotas'), API.get('/duenos'),
+        ]);
+        const uniquePetIds = [...new Set(citas.map(c => c.mascotaId))];
+        const myPets = pets.filter(p => uniquePetIds.includes(p.id));
+
+        if (!myPets.length) {
+            vc(`<div class="empty-state"><div class="empty-icon">🐾</div><p>Aún no tienes pacientes asignados.</p></div>`);
+            return;
+        }
+
+        vc(`<div class="expedientes-grid">${myPets.map(pet => {
+            const dueno    = findIn(duenos, pet.duenoId);
+            const petCitas = citas.filter(c => c.mascotaId === pet.id).sort((a,b) => b.fecha.localeCompare(a.fecha));
+            return `<div class="expediente-card">
+                <div class="exp-header">
+                    <div class="exp-icon">${petEmoji(pet.especie)}</div>
+                    <div>
+                        <div class="exp-name">${h(pet.nombre)}</div>
+                        <div class="exp-species">${h(pet.especie)} · ${h(pet.raza||'-')} · ${pet.edad} años · ${h(pet.color||'-')}</div>
+                    </div>
+                </div>
+                <div class="exp-owner">
+                    <span class="exp-label">Dueño:</span> ${dueno ? h(dueno.nombre)+' '+h(dueno.apellido) : '-'}
+                    ${dueno?.telefono ? `<br><span class="exp-label">Tel:</span> ${h(dueno.telefono)}` : ''}
+                </div>
+                <div class="exp-citas">
+                    <div class="exp-label" style="margin-bottom:6px">Historial (${petCitas.length} citas)</div>
+                    ${petCitas.length ? petCitas.map(c => `
+                        <div class="exp-cita">
+                            <span>${fmtDate(c.fecha)} ${h(c.hora)}</span>
+                            <span style="flex:1">${h(c.motivo)}</span>
+                            ${estadoBadge(c.estado)}
+                        </div>`).join('') : '<p style="color:var(--text-muted);font-size:13px">Sin historial</p>'}
+                </div>
+            </div>`;
+        }).join('')}</div>`);
+    },
 };
 
 /* =============================================
@@ -519,6 +713,11 @@ const Vets = {
     async save(e) {
         e.preventDefault();
         const data = fd(e.target);
+        if (!data.email.endsWith('@vetcare.com')) {
+            Toast.show('El email debe terminar en @vetcare.com', 'error');
+            return;
+        }
+        if (!data.password) delete data.password;
         Loading.show();
         try {
             if (data.id) { await API.put(`/veterinarios/${data.id}`, data); Toast.show('Veterinario actualizado','success'); }
@@ -549,9 +748,16 @@ function vetForm(v) {
         </div>
         <div class="form-row">
             <div class="form-group"><label>Teléfono</label><input name="telefono" type="tel" value="${h(v.telefono||'')}"></div>
-            <div class="form-group"><label>Email</label><input name="email" type="email" value="${h(v.email||'')}" required></div>
+            <div class="form-group">
+                <label>Email <small style="color:var(--text-muted)">(debe ser @vetcare.com)</small></label>
+                <input name="email" type="email" value="${h(v.email||'')}" placeholder="nombre@vetcare.com" required>
+            </div>
         </div>
         <div class="form-group"><label>Horario</label><input name="horario" type="text" value="${h(v.horario||'')}" placeholder="Ej: Lun-Vie 8:00-17:00"></div>
+        <div class="form-group">
+            <label>${v.id ? 'Nueva Contraseña (vacío = mantener)' : 'Contraseña de acceso'}</label>
+            <input name="password" type="password" ${!v.id?'required minlength="6"':''} placeholder="Mínimo 6 caracteres">
+        </div>
         <input type="hidden" name="id" value="${h(v.id||'')}">
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
@@ -748,6 +954,50 @@ const Appts = {
         } catch(err) { Toast.show(err.error||'Error','error'); }
         finally { Loading.hide(); }
     },
+    async confirm(id) {
+        Loading.show();
+        try {
+            await API.put(`/citas/${id}`, { estado: 'confirmada' });
+            Toast.show('Cita confirmada', 'success');
+            _calData.citas = await API.get('/citas');
+            const det = document.getElementById('cal-day-detail');
+            if (det && _calData.selectedDay) det.innerHTML = buildDayDetail(_calData.selectedDay);
+            document.getElementById('cal-grid-wrap').innerHTML = buildCalGrid();
+        } catch(err) { Toast.show(err.error||'Error','error'); }
+        finally { Loading.hide(); }
+    },
+    async complete(id) {
+        Loading.show();
+        try {
+            await API.put(`/citas/${id}`, { estado: 'completada' });
+            Toast.show('Cita completada', 'success');
+            _calData.citas = await API.get('/citas');
+            const det = document.getElementById('cal-day-detail');
+            if (det && _calData.selectedDay) det.innerHTML = buildDayDetail(_calData.selectedDay);
+            document.getElementById('cal-grid-wrap').innerHTML = buildCalGrid();
+        } catch(err) { Toast.show(err.error||'Error','error'); }
+        finally { Loading.hide(); }
+    },
+    async openReschedule(id) {
+        const cita = _calData.citas.find(c => c.id === id);
+        if (!cita) return;
+        Modal.open('Reprogramar Cita', rescheduleForm(cita));
+    },
+    async saveReschedule(e) {
+        e.preventDefault();
+        const data = fd(e.target);
+        Loading.show();
+        try {
+            await API.put(`/citas/${data.id}`, { fecha: data.fecha, hora: data.hora, notas: data.notas });
+            Toast.show('Cita reprogramada', 'success');
+            Modal.close();
+            _calData.citas    = await API.get('/citas');
+            _calData.selectedDay = data.fecha;
+            document.getElementById('cal-grid-wrap').innerHTML  = buildCalGrid();
+            document.getElementById('cal-day-detail').innerHTML = buildDayDetail(data.fecha);
+        } catch(err) { Toast.show(err.error||'Error','error'); }
+        finally { Loading.hide(); }
+    },
     async cancel(id) {
         if (!confirm('¿Cancelar esta cita?')) return;
         Loading.show();
@@ -783,12 +1033,35 @@ function apptForm(c, pets, vets) {
             </div>
         </div>
         <div class="form-group"><label>Motivo</label><input name="motivo" type="text" value="${h(c.motivo||'')}" placeholder="Ej: Vacunación, Control, Cirugía..." required></div>
-        <div class="form-group"><label>Estado</label><select name="estado">${estadoOpts}</select></div>
+        ${state.role === 'admin'
+            ? `<div class="form-group"><label>Estado</label><select name="estado">${estadoOpts}</select></div>`
+            : `<input type="hidden" name="estado" value="${h(c.estado||'pendiente')}">`
+        }
         <div class="form-group"><label>Notas adicionales</label><textarea name="notas" placeholder="Observaciones...">${h(c.notas||'')}</textarea></div>
         <input type="hidden" name="id" value="${h(c.id||'')}">
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
             <button type="submit" class="btn btn-primary">${c.id?'Actualizar':'Agendar'}</button>
+        </div>
+    </form>`;
+}
+
+function rescheduleForm(c) {
+    const pet      = findIn(_calData.pets, c.mascotaId);
+    const horaOpts = timeSlots().map(t => `<option ${c.hora===t?'selected':''}>${t}</option>`).join('');
+    return `<form onsubmit="Appts.saveReschedule(event)">
+        <p style="color:var(--text-muted);margin-bottom:16px">${pet ? petEmoji(pet.especie)+' <strong>'+h(pet.nombre)+'</strong>' : ''} — ${h(c.motivo)}</p>
+        <div class="form-row">
+            <div class="form-group"><label>Nueva Fecha</label><input name="fecha" type="date" value="${h(c.fecha)}" min="${today()}" required></div>
+            <div class="form-group"><label>Nueva Hora</label>
+                <select name="hora" required><option value="">Seleccionar...</option>${horaOpts}</select>
+            </div>
+        </div>
+        <div class="form-group"><label>Notas adicionales</label><textarea name="notas" placeholder="Observaciones...">${h(c.notas||'')}</textarea></div>
+        <input type="hidden" name="id" value="${h(c.id)}">
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Reprogramar</button>
         </div>
     </form>`;
 }
