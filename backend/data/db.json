@@ -8,7 +8,7 @@
       "telefono": "555-0101",
       "email": "carlos@vetcare.com",
       "horario": "Lun-Vie 8:00-17:00",
-      "password": "Vetcare1"
+      "password": "C1234567"
     },
     {
       "id": "v2",
@@ -18,7 +18,7 @@
       "telefono": "555-0102",
       "email": "maria@vetcare.com",
       "horario": "Mar-Sáb 9:00-18:00",
-      "password": "Vetcare1"
+      "password": "M1234567"
     },
     {
       "id": "v3",
@@ -28,7 +28,7 @@
       "telefono": "555-0103",
       "email": "roberto@vetcare.com",
       "horario": "Lun-Vie 10:00-19:00",
-      "password": "Vetcare1"
+      "password": "R1234567"
     },
     {
       "nombre": "Mateo",
@@ -37,7 +37,7 @@
       "telefono": "5566778899",
       "email": "mate@vetcare.com",
       "horario": "Lun-Vie 14:00-22:00",
-      "password": "mateVet",
+      "password": "M1234567",
       "id": "mp7iop4ouz6t0"
     }
   ],
@@ -47,18 +47,27 @@
       "nombre": "Ana",
       "apellido": "Pérez",
       "email": "ana@example.com",
-      "password": "Dueno123",
-      "telefono": "555-9999",
+      "password": "A1234567",
+      "telefono": "55669999",
       "direccion": "Av. Principal 123"
     },
     {
-      "id": "mp6d62qjun0qk",
       "nombre": "Adriana",
       "apellido": "García",
-      "email": "adyg@gmail.com",
-      "password": "A1234567",
+      "email": "adyegl@gmail.com",
       "telefono": "5535162384",
-      "direccion": "Av. Desembocadura 23A, Gustavo A. Madero, CDMX"
+      "direccion": "Av. Desembocadura 23A, CDMX",
+      "password": "A1234567",
+      "id": "mpd7km23fwceq"
+    },
+    {
+      "id": "mpd91lh53ap1u",
+      "nombre": "Fernando",
+      "apellido": "Sánchez",
+      "email": "fer@gmail.com",
+      "password": "F1234567",
+      "telefono": "5561770806",
+      "direccion": "Cd. Nezahualcoyotl, Edo. Mex."
     }
   ],
   "mascotas": [
@@ -83,46 +92,56 @@
       "duenoId": "o1"
     },
     {
-      "nombre": "4Q",
+      "nombre": "Zucky",
+      "especie": "Perro",
+      "raza": "Shih Tzu",
+      "color": "Negro y Blanco",
+      "edad": 13,
+      "tamano": "Pequeño",
+      "duenoId": "mpd7km23fwceq",
+      "id": "mpd7m3gtrq8xk"
+    },
+    {
+      "nombre": "Clove",
       "especie": "Gato",
-      "raza": "-",
-      "color": "Rosa",
-      "edad": 28,
-      "tamano": "Extra Grande",
-      "duenoId": "mp6d62qjun0qk",
-      "id": "mp6dip9i8p12m"
+      "raza": "Egipcio",
+      "color": "Blanco",
+      "edad": 20,
+      "tamano": "Mediano",
+      "duenoId": "mpd91lh53ap1u",
+      "id": "mpd946nmh7jvf"
     }
   ],
   "citas": [
     {
-      "id": "c1",
+      "mascotaId": "mpd7m3gtrq8xk",
+      "veterinarioId": "v1",
+      "fecha": "2026-05-20",
+      "hora": "16:00",
+      "motivo": "Vacunación",
+      "estado": "completada",
+      "notas": "",
+      "id": "mpd8imj0k9akn"
+    },
+    {
       "mascotaId": "m1",
       "veterinarioId": "v1",
       "fecha": "2026-05-20",
-      "hora": "10:00",
-      "motivo": "Vacunación anual",
+      "hora": "14:00",
+      "motivo": "Vacunación",
       "estado": "confirmada",
-      "notas": ""
+      "notas": "El día 20 de mayo acabo consulta a las 16:30 horas.",
+      "id": "mpd8rfsx8m7p5"
     },
     {
-      "id": "c2",
-      "mascotaId": "m2",
+      "mascotaId": "mpd946nmh7jvf",
       "veterinarioId": "v2",
-      "fecha": "2026-05-22",
-      "hora": "14:30",
-      "motivo": "Control dermatológico",
-      "estado": "confirmada",
-      "notas": ""
-    },
-    {
-      "mascotaId": "mp6dip9i8p12m",
-      "veterinarioId": "v1",
-      "fecha": "2026-05-15",
-      "hora": "12:30",
-      "motivo": "tiene herpes",
+      "fecha": "2026-05-20",
+      "hora": "16:00",
+      "motivo": "Control",
       "estado": "pendiente",
-      "notas": "",
-      "id": "mp6dj6mknkvo5"
+      "notas": "Le salió una mancha roja en la pata izquierda.",
+      "id": "mpd95wdcbu5yt"
     }
   ]
 }

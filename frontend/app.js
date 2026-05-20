@@ -80,6 +80,69 @@ function timeSlots() {
     return s;
 }
 
+const _DAY_IDX = { Lun:1, Mar:2, 'Mié':3, Jue:4, Vie:5, 'Sáb':6, Dom:0 };
+let _formVets = [];
+
+function parseHorario(horario) {
+    if (!horario) return null;
+    const m = horario.match(/([^\s-]+)-([^\s-]+)\s+(\d+):(\d+)-(\d+):(\d+)/);
+    if (!m) return null;
+    const sd = _DAY_IDX[m[1]], ed = _DAY_IDX[m[2]];
+    if (sd == null || ed == null) return null;
+    return { sd, ed, sh:+m[3], sm:+m[4], eh:+m[5], em:+m[6] };
+}
+
+function timeSlotsForVet(horario) {
+    const h = parseHorario(horario);
+    if (!h) return timeSlots();
+    const slots = [];
+    const start = h.sh * 60 + h.sm, end = h.eh * 60 + h.em;
+    for (let hr = h.sh; hr <= h.eh; hr++) {
+        for (const min of [0, 30]) {
+            const t = hr * 60 + min;
+            if (t >= start && t <= end)
+                slots.push(String(hr).padStart(2,'0') + ':' + String(min).padStart(2,'0'));
+        }
+    }
+    return slots;
+}
+
+function vetWorkDays(horario) {
+    const h = parseHorario(horario);
+    if (!h) return null;
+    const days = [];
+    if (h.sd <= h.ed) { for (let d = h.sd; d <= h.ed; d++) days.push(d); }
+    else { for (let d = h.sd; d <= 6; d++) days.push(d); for (let d = 0; d <= h.ed; d++) days.push(d); }
+    return days;
+}
+
+function updateAppointmentVet(vetId) {
+    const vet = _formVets.find(v => v.id === vetId);
+    const horaSelect = document.getElementById('appt-hora');
+    if (!horaSelect) return;
+    const prev = horaSelect.value;
+    const slots = vet ? timeSlotsForVet(vet.horario) : timeSlots();
+    horaSelect.innerHTML = '<option value="">Seleccionar...</option>' +
+        slots.map(t => `<option${prev === t ? ' selected' : ''}>${t}</option>`).join('');
+    checkApptDate();
+}
+
+function checkApptDate() {
+    const vetSel  = document.getElementById('appt-vet');
+    const dateIn  = document.getElementById('appt-fecha');
+    if (!vetSel || !dateIn || !dateIn.value || !vetSel.value) return;
+    const vet  = _formVets.find(v => v.id === vetSel.value);
+    if (!vet || !vet.horario) return;
+    const days = vetWorkDays(vet.horario);
+    if (!days) return;
+    const dow  = new Date(dateIn.value + 'T00:00:00').getDay();
+    if (!days.includes(dow)) {
+        const nombres = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+        Toast.show(`El Dr. ${h(vet.nombre)} no atiende los ${nombres[dow]}`, 'error');
+        dateIn.value = '';
+    }
+}
+
 function findIn(arr, id) { return (arr || []).find(x => x.id === id) || null; }
 
 function validPassword(p) { return p.length >= 8 && /[A-Z]/.test(p); }
@@ -641,9 +704,10 @@ const Views = {
     },
 
     async calendario() {
-        const [citas, pets, duenos] = await Promise.all([
-            API.get('/citas'), API.get('/mascotas'), API.get('/duenos'),
+        const [citas, pets, duenos, vets] = await Promise.all([
+            API.get('/citas'), API.get('/mascotas'), API.get('/duenos'), API.get('/veterinarios'),
         ]);
+        _formVets = vets;
         const now = new Date();
         _calData = { citas, pets, duenos, year: now.getFullYear(), month: now.getMonth(), selectedDay: null };
 
@@ -950,14 +1014,17 @@ function petForm(m, duenos) {
 const Appts = {
     async openAdd() {
         const [pets, vets] = await Promise.all([API.get('/mascotas'), API.get('/veterinarios')]);
-        if (!pets.length) { Toast.show('Primero registra una mascota','error'); return; }
+        _formVets = vets;
+        const myPets = state.role === 'owner' ? pets.filter(p => p.duenoId === state.user.id) : pets;
+        if (!myPets.length) { Toast.show('Primero registra una mascota','error'); return; }
         if (!vets.length) { Toast.show('No hay veterinarios disponibles','error'); return; }
-        Modal.open('Agendar Cita', apptForm({}, pets, vets));
+        Modal.open('Agendar Cita', apptForm({}, myPets, vets));
     },
     async openEdit(id) {
         const [cita, pets, vets] = await Promise.all([
             API.get(`/citas/${id}`), API.get('/mascotas'), API.get('/veterinarios'),
         ]);
+        _formVets = vets;
         if (cita) Modal.open('Editar Cita', apptForm(cita, pets, vets));
     },
     async save(e) {
@@ -1034,20 +1101,26 @@ const Appts = {
 
 function apptForm(c, pets, vets) {
     const petOpts    = pets.map(m  => `<option value="${h(m.id)}"  ${c.mascotaId===m.id?'selected':''}>${petEmoji(m.especie)} ${h(m.nombre)} (${h(m.especie)})</option>`).join('');
+    const selVet     = vets.find(v => v.id === c.veterinarioId);
     const vetOpts    = vets.map(v  => `<option value="${h(v.id)}"  ${c.veterinarioId===v.id?'selected':''}>Dr. ${h(v.nombre)} ${h(v.apellido)} — ${h(v.especialidad)}</option>`).join('');
-    const horaOpts   = timeSlots().map(t  => `<option ${c.hora===t?'selected':''}>${t}</option>`).join('');
+    const horaSlots  = selVet ? timeSlotsForVet(selVet.horario) : timeSlots();
+    const horaOpts   = horaSlots.map(t => `<option ${c.hora===t?'selected':''}>${t}</option>`).join('');
     const estadoOpts = ESTADOS.map(e => `<option ${(c.estado||'pendiente')===e?'selected':''}>${h(e)}</option>`).join('');
     return `<form onsubmit="Appts.save(event)">
         <div class="form-group"><label>Mascota</label>
             <select name="mascotaId" required><option value="">Seleccionar mascota...</option>${petOpts}</select>
         </div>
         <div class="form-group"><label>Veterinario</label>
-            <select name="veterinarioId" required><option value="">Seleccionar veterinario...</option>${vetOpts}</select>
+            <select id="appt-vet" name="veterinarioId" required onchange="updateAppointmentVet(this.value)">
+                <option value="">Seleccionar veterinario...</option>${vetOpts}
+            </select>
         </div>
         <div class="form-row">
-            <div class="form-group"><label>Fecha</label><input name="fecha" type="date" value="${h(c.fecha||today())}" min="${today()}" required></div>
+            <div class="form-group"><label>Fecha</label>
+                <input id="appt-fecha" name="fecha" type="date" value="${h(c.fecha||today())}" min="${today()}" required onchange="checkApptDate()">
+            </div>
             <div class="form-group"><label>Hora</label>
-                <select name="hora" required><option value="">Seleccionar...</option>${horaOpts}</select>
+                <select id="appt-hora" name="hora" required><option value="">Seleccionar...</option>${horaOpts}</select>
             </div>
         </div>
         <div class="form-group"><label>Motivo</label><input name="motivo" type="text" value="${h(c.motivo||'')}" placeholder="Ej: Vacunación, Control, Cirugía..." required></div>
@@ -1066,7 +1139,8 @@ function apptForm(c, pets, vets) {
 
 function rescheduleForm(c) {
     const pet      = findIn(_calData.pets, c.mascotaId);
-    const horaOpts = timeSlots().map(t => `<option ${c.hora===t?'selected':''}>${t}</option>`).join('');
+    const vet      = findIn(_formVets, c.veterinarioId);
+    const horaOpts = timeSlotsForVet(vet ? vet.horario : null).map(t => `<option ${c.hora===t?'selected':''}>${t}</option>`).join('');
     return `<form onsubmit="Appts.saveReschedule(event)">
         <p style="color:var(--text-muted);margin-bottom:16px">${pet ? petEmoji(pet.especie)+' <strong>'+h(pet.nombre)+'</strong>' : ''} — ${h(c.motivo)}</p>
         <div class="form-row">
