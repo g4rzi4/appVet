@@ -59,13 +59,19 @@ function validateAppt(horario, fecha, hora) {
 }
 
 // GET: admin=todas, vet=las suyas, owner=las de sus mascotas
+// Acepta ?mascotaId=xxx para filtrar el historial de una mascota específica
 router.get('/', (req, res) => {
     const db = read();
-    if (req.user.role === 'admin') return res.json(db.citas);
-    if (req.user.role === 'vet')
-        return res.json(db.citas.filter(c => c.veterinarioId === req.user.id));
-    const ids = ownerPetIds(db, req.user.id);
-    res.json(db.citas.filter(c => ids.includes(c.mascotaId)));
+    let result;
+    if (req.user.role === 'admin') result = db.citas;
+    else if (req.user.role === 'vet')
+        result = db.citas.filter(c => c.veterinarioId === req.user.id);
+    else {
+        const ids = ownerPetIds(db, req.user.id);
+        result = db.citas.filter(c => ids.includes(c.mascotaId));
+    }
+    if (req.query.mascotaId) result = result.filter(c => c.mascotaId === req.query.mascotaId);
+    res.json(result);
 });
 
 router.get('/:id', (req, res) => {

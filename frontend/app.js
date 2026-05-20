@@ -396,6 +396,7 @@ function buildDayDetail(dateStr) {
             </div>
             <div class="appt-side">
                 ${estadoBadge(c.estado)}
+                ${pet ? `<button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${c.mascotaId}','${h(pet.nombre)}')">Historial</button>` : ''}
                 ${canConfirm    ? `<button class="btn btn-primary btn-sm" onclick="Appts.confirm('${c.id}')">Confirmar</button>` : ''}
                 ${canComplete   ? `<button class="btn btn-success btn-sm" onclick="Appts.complete('${c.id}')">Completar</button>` : ''}
                 ${canReschedule ? `<button class="btn btn-ghost btn-sm" onclick="Sols.openNew('${c.id}')">Reprogramar</button>` : ''}
@@ -422,6 +423,7 @@ function buildOwnerDayDetail(dateStr) {
             </div>
             <div class="appt-side">
                 ${estadoBadge(c.estado)}
+                ${pet ? `<button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${c.mascotaId}','${h(pet.nombre)}')">Historial</button>` : ''}
                 ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="Appts.ownerCalCancel('${c.id}')">Cancelar</button>` : ''}
             </div>
         </div>`;
@@ -641,6 +643,7 @@ const Views = {
                         <td>${m.edad} año${m.edad!=1?'s':''}</td><td>${h(m.tamano||'-')}</td>
                         <td>${d ? h(d.nombre)+' '+h(d.apellido) : '-'}</td>
                         <td><div class="action-btns">
+                            <button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${m.id}','${h(m.nombre)}')">Historial</button>
                             <button class="btn btn-ghost btn-sm" onclick="Pets.openEdit('${m.id}')">Editar</button>
                             <button class="btn btn-danger btn-sm" onclick="Pets.del('${m.id}')">Eliminar</button>
                         </div></td>
@@ -666,6 +669,7 @@ const Views = {
                         <td>${v ? 'Dr. '+h(v.nombre)+' '+h(v.apellido) : '-'}</td>
                         <td>${h(c.motivo)}</td><td>${estadoBadge(c.estado)}</td>
                         <td><div class="action-btns">
+                            ${m ? `<button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${m.id}','${h(m.nombre)}')">Historial</button>` : ''}
                             <button class="btn btn-ghost btn-sm" onclick="Appts.openEdit('${c.id}')">Editar</button>
                             <button class="btn btn-danger btn-sm" onclick="Appts.del('${c.id}')">Eliminar</button>
                         </div></td>
@@ -695,6 +699,7 @@ const Views = {
                         Color: ${h(m.color||'-')}
                     </div>
                     <div class="pet-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${m.id}','${h(m.nombre)}')">Historial</button>
                         <button class="btn btn-ghost btn-sm" onclick="Pets.openEdit('${m.id}')">Editar</button>
                         <button class="btn btn-danger btn-sm" onclick="Pets.del('${m.id}')">Eliminar</button>
                     </div>
@@ -896,17 +901,18 @@ const Views = {
             return `<div class="expediente-card">
                 <div class="exp-header">
                     <div class="exp-icon">${petEmoji(pet.especie)}</div>
-                    <div>
+                    <div style="flex:1">
                         <div class="exp-name">${h(pet.nombre)}</div>
                         <div class="exp-species">${h(pet.especie)} · ${h(pet.raza||'-')} · ${pet.edad} años · ${h(pet.color||'-')}</div>
                     </div>
+                    <button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${pet.id}','${h(pet.nombre)}')">Ver historial completo</button>
                 </div>
                 <div class="exp-owner">
                     <span class="exp-label">Dueño:</span> ${dueno ? h(dueno.nombre)+' '+h(dueno.apellido) : '-'}
                     ${dueno?.telefono ? `<br><span class="exp-label">Tel:</span> ${h(dueno.telefono)}` : ''}
                 </div>
                 <div class="exp-citas">
-                    <div class="exp-label" style="margin-bottom:6px">Historial (${petCitas.length} citas)</div>
+                    <div class="exp-label" style="margin-bottom:6px">Mis consultas con este paciente (${petCitas.length})</div>
                     ${petCitas.length ? petCitas.map(c => `
                         <div class="exp-cita">
                             <span>${fmtDate(c.fecha)} ${h(c.hora)}</span>
@@ -1333,6 +1339,51 @@ function rescheduleForm(c) {
 }
 
 /* =============================================
+   HISTORIAL CLÍNICO
+   ============================================= */
+const PetHistorial = {
+    async open(petId, petNombre) {
+        Loading.show();
+        try {
+            const [citas, vets] = await Promise.all([
+                API.get(`/citas?mascotaId=${encodeURIComponent(petId)}`),
+                API.get('/veterinarios'),
+            ]);
+            const sorted = [...citas].sort((a, b) =>
+                b.fecha.localeCompare(a.fecha) || b.hora.localeCompare(a.hora)
+            );
+            Modal.open(`Historial Clínico — ${h(petNombre)}`, PetHistorial._render(sorted, vets), 'lg');
+        } catch(err) { Toast.show(err.error || 'Error al cargar historial', 'error'); }
+        finally { Loading.hide(); }
+    },
+
+    _render(citas, vets) {
+        const rows = citas.length ? citas.map(c => {
+            const v = findIn(vets, c.veterinarioId);
+            return `<tr>
+                <td>${fmtDate(c.fecha)}</td>
+                <td>${h(c.hora)}</td>
+                <td>${v ? 'Dr. '+h(v.nombre)+' '+h(v.apellido) : '-'}</td>
+                <td>${h(c.motivo)}</td>
+                <td>${estadoBadge(c.estado)}</td>
+                <td style="max-width:200px;font-size:12px;color:var(--text-muted)">${h(c.notas||'—')}</td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Sin historial registrado.</td></tr>`;
+
+        return `<div class="table-container"><table class="data-table">
+            <thead><tr>
+                <th>Fecha</th><th>Hora</th><th>Veterinario</th>
+                <th>Motivo</th><th>Estado</th><th>Notas</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table></div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>
+        </div>`;
+    },
+};
+
+/* =============================================
    CRUD — SOLICITUDES DE REPROGRAMACIÓN
    ============================================= */
 const Sols = {
@@ -1434,7 +1485,9 @@ function solForm(cita, pet, vet) {
    MODAL
    ============================================= */
 const Modal = {
-    open(title, body) {
+    open(title, body, size = '') {
+        const box = document.getElementById('modal-box');
+        box.classList.toggle('modal-lg', size === 'lg');
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-body').innerHTML    = body;
         document.getElementById('modal-overlay').classList.add('show');
