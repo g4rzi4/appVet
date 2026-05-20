@@ -79,7 +79,8 @@
       "color": "Dorado",
       "edad": 3,
       "tamano": "Grande",
-      "duenoId": "o1"
+      "duenoId": "o1",
+      "estadoSalud": "en_tratamiento"
     },
     {
       "id": "m2",
@@ -89,7 +90,8 @@
       "color": "Blanco",
       "edad": 2,
       "tamano": "Pequeño",
-      "duenoId": "o1"
+      "duenoId": "o1",
+      "estadoSalud": "en_recuperacion"
     },
     {
       "nombre": "Zucky",
@@ -99,7 +101,8 @@
       "edad": 13,
       "tamano": "Pequeño",
       "duenoId": "mpd7km23fwceq",
-      "id": "mpd7m3gtrq8xk"
+      "id": "mpd7m3gtrq8xk",
+      "estadoSalud": "estable"
     },
     {
       "nombre": "Clove",
@@ -109,7 +112,8 @@
       "edad": 20,
       "tamano": "Mediano",
       "duenoId": "mpd91lh53ap1u",
-      "id": "mpd946nmh7jvf"
+      "id": "mpd946nmh7jvf",
+      "estadoSalud": "grave"
     }
   ],
   "solicitudes": [
@@ -165,6 +169,16 @@
       "estado": "pendiente",
       "notas": "Escupe mucho pelo.",
       "id": "mpdgki0w65itl"
+    },
+    {
+      "mascotaId": "mpd946nmh7jvf",
+      "veterinarioId": "v1",
+      "fecha": "2026-05-29",
+      "hora": "10:00",
+      "motivo": "Cirugía",
+      "estado": "pendiente",
+      "notas": "Castramiento",
+      "id": "mpe5fqe8fbf6b"
     }
   ]
 }

@@ -58,8 +58,28 @@ function dayOf(s)   { return s ? new Date(s + 'T00:00:00').getDate() : ''; }
 function monthOf(s) { return s ? new Date(s + 'T00:00:00').toLocaleDateString('es-ES',{month:'short'}) : ''; }
 function today()    { return new Date().toISOString().split('T')[0]; }
 
+const Icons = {
+    _s(b, s = 18) {
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${b}</svg>`;
+    },
+    paw:            (s=18) => Icons._s(`<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><circle cx="4" cy="8" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>`, s),
+    dashboard:      (s=18) => Icons._s(`<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>`, s),
+    activity:       (s=18) => Icons._s(`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`, s),
+    users:          (s=18) => Icons._s(`<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`, s),
+    calendar:       (s=18) => Icons._s(`<rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>`, s),
+    arrowLeftRight: (s=18) => Icons._s(`<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>`, s),
+    user:           (s=18) => Icons._s(`<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`, s),
+    check:          (s=15) => Icons._s(`<polyline points="20 6 9 17 4 12"/>`, s),
+    checkCircle:    (s=15) => Icons._s(`<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>`, s),
+    alertTriangle:  (s=15) => Icons._s(`<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>`, s),
+    info:           (s=15) => Icons._s(`<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>`, s),
+    xCircle:        (s=15) => Icons._s(`<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>`, s),
+    chevronLeft:    (s=16) => Icons._s(`<path d="m15 18-6-6 6-6"/>`, s),
+    chevronRight:   (s=16) => Icons._s(`<path d="m9 18 6-6-6-6"/>`, s),
+};
+
 function petEmoji(especie) {
-    return ({Perro:'🐕',Gato:'🐈',Conejo:'🐇',Ave:'🦜',Reptil:'🦎',Pez:'🐠',Hámster:'🐹'})[especie] || '🐾';
+    return Icons.paw(16);
 }
 
 function estadoBadge(e) {
@@ -151,6 +171,32 @@ const ESPECIALIDADES = ['Medicina General','Cirugía General','Medicina Interna'
 const TAMANOS        = ['Muy Pequeño','Pequeño','Mediano','Grande','Extra Grande'];
 const ESPECIES       = ['Perro','Gato','Conejo','Ave','Reptil','Pez','Hámster'];
 const ESTADOS        = ['pendiente','confirmada','completada','cancelada'];
+
+const ESTADOS_SALUD = [
+    { value: '',                 label: 'Sin registro',      badge: 'gray'    },
+    { value: 'estable',          label: 'Estable',            badge: 'green'   },
+    { value: 'en_tratamiento',   label: 'En tratamiento',     badge: 'blue'    },
+    { value: 'en_recuperacion',  label: 'En recuperación',    badge: 'orange'  },
+    { value: 'bajo_observacion', label: 'Bajo observación',   badge: 'teal'    },
+    { value: 'hospitalizado',    label: 'Hospitalizado',      badge: 'purple'  },
+    { value: 'en_cirugia',       label: 'En cirugía',         badge: 'amber'   },
+    { value: 'grave',            label: 'Grave',              badge: 'red'     },
+    { value: 'critico',          label: 'Crítico',            badge: 'crimson' },
+    { value: 'alta_medica',      label: 'Alta médica',        badge: 'teal'    },
+];
+
+function estadoSaludBadge(val) {
+    const es = ESTADOS_SALUD.find(e => e.value === (val || '')) || ESTADOS_SALUD[0];
+    if (!es.value) return `<span class="badge badge-gray">Sin registro</span>`;
+    return `<span class="badge badge-${es.badge}">${h(es.label)}</span>`;
+}
+
+function estadoSaludSelect(petId, currentVal, onchangeFn) {
+    const opts = ESTADOS_SALUD.map(e =>
+        `<option value="${h(e.value)}" ${(currentVal||'')===e.value?'selected':''}>${h(e.label)}</option>`
+    ).join('');
+    return `<select class="estado-salud-select" onchange="${onchangeFn}('${petId}',this.value)">${opts}</select>`;
+}
 
 /* =============================================
    INICIALIZACIÓN
@@ -260,23 +306,23 @@ async function bootApp() {
    ============================================= */
 function renderSidebar() {
     const adminItems = [
-        {id:'dashboard',    icon:'📊', label:'Dashboard'},
-        {id:'veterinarios', icon:'👨‍⚕️', label:'Veterinarios'},
-        {id:'duenos',       icon:'👥', label:'Dueños'},
-        {id:'mascotas',     icon:'🐾', label:'Mascotas'},
-        {id:'citas',        icon:'📅', label:'Citas'},
-        {id:'solicitudes',  icon:'🔄', label:'Solicitudes'},
+        {id:'dashboard',    icon: Icons.dashboard(),      label:'Dashboard'},
+        {id:'veterinarios', icon: Icons.activity(),       label:'Veterinarios'},
+        {id:'duenos',       icon: Icons.users(),          label:'Dueños'},
+        {id:'mascotas',     icon: Icons.paw(),            label:'Mascotas'},
+        {id:'citas',        icon: Icons.calendar(),       label:'Citas'},
+        {id:'solicitudes',  icon: Icons.arrowLeftRight(), label:'Solicitudes'},
     ];
     const ownerItems = [
-        {id:'misMascotas',    icon:'🐾', label:'Mis Mascotas'},
-        {id:'misCitas',       icon:'📅', label:'Mis Citas'},
-        {id:'misSolicitudes', icon:'🔄', label:'Mis Solicitudes'},
-        {id:'perfil',         icon:'👤', label:'Mi Perfil'},
+        {id:'misMascotas',    icon: Icons.paw(),            label:'Mis Mascotas'},
+        {id:'misCitas',       icon: Icons.calendar(),       label:'Mis Citas'},
+        {id:'misSolicitudes', icon: Icons.arrowLeftRight(), label:'Mis Solicitudes'},
+        {id:'perfil',         icon: Icons.user(),           label:'Mi Perfil'},
     ];
     const vetItems = [
-        {id:'calendario',     icon:'📅', label:'Calendario'},
-        {id:'misPacientes',   icon:'🐾', label:'Mis Pacientes'},
-        {id:'misSolicitudes', icon:'🔄', label:'Mis Solicitudes'},
+        {id:'calendario',     icon: Icons.calendar(),       label:'Calendario'},
+        {id:'misPacientes',   icon: Icons.paw(),            label:'Mis Pacientes'},
+        {id:'misSolicitudes', icon: Icons.arrowLeftRight(), label:'Mis Solicitudes'},
     ];
     const items = state.role === 'admin' ? adminItems : state.role === 'vet' ? vetItems : ownerItems;
     document.getElementById('sidebar-nav').innerHTML = items.map(it => `
@@ -289,7 +335,7 @@ function renderSidebar() {
 function renderUserInfo() {
     const full = `${state.user.nombre} ${state.user.apellido}`;
     document.getElementById('user-name').textContent       = full;
-    document.getElementById('user-role-label').textContent = state.role === 'admin' ? 'Administrador' : 'Dueño';
+    document.getElementById('user-role-label').textContent = state.role === 'admin' ? 'Administrador' : state.role === 'vet' ? 'Doctor' : 'Dueño';
     document.getElementById('user-avatar').textContent     = full.charAt(0).toUpperCase();
 }
 
@@ -359,9 +405,9 @@ function buildCalGrid(mode = 'vet') {
 
     return `
         <div class="cal-nav">
-            <button onclick="${prevFn}()">‹</button>
+            <button onclick="${prevFn}()">${Icons.chevronLeft()}</button>
             <span>${monthName}</span>
-            <button onclick="${nextFn}()">›</button>
+            <button onclick="${nextFn}()">${Icons.chevronRight()}</button>
         </div>
         <div class="cal-grid">
             <div class="cal-dow">Lu</div><div class="cal-dow">Ma</div><div class="cal-dow">Mi</div>
@@ -393,6 +439,10 @@ function buildDayDetail(dateStr) {
                 <div class="appt-pet">${pet ? petEmoji(pet.especie)+' '+h(pet.nombre) : '-'}</div>
                 <div class="appt-owner">${dueno ? h(dueno.nombre)+' '+h(dueno.apellido) : ''}</div>
                 <div class="appt-motivo">${h(c.motivo)}</div>
+                ${pet ? `<div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+                    <span style="font-size:12px;color:var(--text-muted)">Estado:</span>
+                    ${estadoSaludSelect(pet.id, pet.estadoSalud, 'Pets.setEstadoSalud')}
+                </div>` : ''}
             </div>
             <div class="appt-side">
                 ${estadoBadge(c.estado)}
@@ -413,17 +463,20 @@ function buildOwnerDayDetail(dateStr) {
     return day.map(c => {
         const pet = findIn(pets, c.mascotaId);
         const vet = findIn(vets, c.veterinarioId);
-        const canCancel = c.estado === 'pendiente';
+        const canCancel      = c.estado === 'pendiente';
+        const canReschedule  = c.estado === 'pendiente' || c.estado === 'confirmada';
         return `<div class="appt-item">
             <div class="appt-time">${h(c.hora)}</div>
             <div class="appt-info">
                 <div class="appt-pet">${pet ? petEmoji(pet.especie)+' '+h(pet.nombre) : '-'}</div>
                 <div class="appt-owner">${vet ? 'Dr. '+h(vet.nombre)+' '+h(vet.apellido) : ''}</div>
                 <div class="appt-motivo">${h(c.motivo)}</div>
+                ${pet ? `<div style="margin-top:6px">${estadoSaludBadge(pet.estadoSalud)}</div>` : ''}
             </div>
             <div class="appt-side">
                 ${estadoBadge(c.estado)}
                 ${pet ? `<button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${c.mascotaId}','${h(pet.nombre)}')">Historial</button>` : ''}
+                ${canReschedule ? `<button class="btn btn-ghost btn-sm" onclick="Sols.openNew('${c.id}')">Reprogramar</button>` : ''}
                 ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="Appts.ownerCalCancel('${c.id}')">Cancelar</button>` : ''}
             </div>
         </div>`;
@@ -561,23 +614,23 @@ const Views = {
         vc(`
             <div class="stats-grid">
                 <div class="stat-card blue">
-                    <div class="stat-icon">👨‍⚕️</div>
+                    <div class="stat-icon">${Icons.activity(22)}</div>
                     <div><div class="stat-value">${vets.length}</div><div class="stat-label">Veterinarios</div></div>
                 </div>
                 <div class="stat-card green">
-                    <div class="stat-icon">👥</div>
+                    <div class="stat-icon">${Icons.users(22)}</div>
                     <div><div class="stat-value">${duenos.length}</div><div class="stat-label">Dueños</div></div>
                 </div>
                 <div class="stat-card purple">
-                    <div class="stat-icon">🐾</div>
+                    <div class="stat-icon">${Icons.paw(22)}</div>
                     <div><div class="stat-value">${pets.length}</div><div class="stat-label">Mascotas</div></div>
                 </div>
                 <div class="stat-card orange">
-                    <div class="stat-icon">📅</div>
+                    <div class="stat-icon">${Icons.calendar(22)}</div>
                     <div><div class="stat-value">${pend.length}</div><div class="stat-label">Citas Pendientes</div></div>
                 </div>
-                ${pendSols.length ? `<div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;cursor:pointer" onclick="navigate('solicitudes')">
-                    <div class="stat-icon">🔄</div>
+                ${pendSols.length ? `<div class="stat-card" style="background:#D97706;color:#fff;cursor:pointer" onclick="navigate('solicitudes')">
+                    <div class="stat-icon" style="background:rgba(255,255,255,0.2);color:#fff">${Icons.arrowLeftRight(22)}</div>
                     <div><div class="stat-value">${pendSols.length}</div><div class="stat-label">Solicitudes Pendientes</div></div>
                 </div>` : ''}
             </div>
@@ -632,7 +685,7 @@ const Views = {
     async mascotas() {
         const [pets, duenos] = await Promise.all([API.get('/mascotas'), API.get('/duenos')]);
         entityView('Mascotas', '+ Agregar Mascota', 'Pets.openAdd()',
-            ['Nombre','Especie','Raza','Color','Edad','Tamaño','Dueño','Acciones'],
+            ['Nombre','Especie','Raza','Color','Edad','Tamaño','Dueño','Estado salud','Acciones'],
             pets.map(m => {
                 const d = findIn(duenos, m.duenoId);
                 return `
@@ -642,6 +695,7 @@ const Views = {
                         <td>${h(m.raza||'-')}</td><td>${h(m.color||'-')}</td>
                         <td>${m.edad} año${m.edad!=1?'s':''}</td><td>${h(m.tamano||'-')}</td>
                         <td>${d ? h(d.nombre)+' '+h(d.apellido) : '-'}</td>
+                        <td>${estadoSaludBadge(m.estadoSalud)}</td>
                         <td><div class="action-btns">
                             <button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${m.id}','${h(m.nombre)}')">Historial</button>
                             <button class="btn btn-ghost btn-sm" onclick="Pets.openEdit('${m.id}')">Editar</button>
@@ -684,20 +738,21 @@ const Views = {
             <button class="btn btn-primary" onclick="Pets.openAdd()">+ Agregar Mascota</button>
         </div>`;
         if (!pets.length) {
-            html += `<div class="empty-state"><div class="empty-icon">🐾</div>
+            html += `<div class="empty-state"><div class="empty-icon">${Icons.paw(52)}</div>
                 <p>No tienes mascotas registradas aún.</p>
                 <button class="btn btn-primary" style="margin-top:16px" onclick="Pets.openAdd()">Agregar mi primera mascota</button>
             </div>`;
         } else {
             html += `<div class="pets-grid">` + pets.map(m => `
                 <div class="pet-card">
-                    <div class="pet-icon">${petEmoji(m.especie)}</div>
+                    <div class="pet-icon">${Icons.paw(38)}</div>
                     <div class="pet-name">${h(m.nombre)}</div>
                     <div class="pet-info">
-                        ${h(m.especie)}${m.raza?' · '+h(m.raza):''}<br>
-                        ${m.edad} año${m.edad!=1?'s':''} · ${h(m.tamano||'-')}<br>
-                        Color: ${h(m.color||'-')}
+                        <span>${h(m.especie)}${m.raza ? ' · ' + h(m.raza) : ''}</span>
+                        <span>${m.edad} año${m.edad!=1?'s':''} · ${h(m.tamano||'-')}</span>
+                        <span>Color: ${h(m.color||'-')}</span>
                     </div>
+                    <div class="pet-badge">${estadoSaludBadge(m.estadoSalud)}</div>
                     <div class="pet-actions">
                         <button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${m.id}','${h(m.nombre)}')">Historial</button>
                         <button class="btn btn-ghost btn-sm" onclick="Pets.openEdit('${m.id}')">Editar</button>
@@ -821,14 +876,13 @@ const Views = {
         }
 
         vc(`
-            ${pendientes.length ? `
-            <div class="card" style="margin-bottom:20px">
+            ${pendientes.length ? `<div class="card" style="margin-bottom:20px">
                 <div class="card-header"><div class="card-title">Pendientes (${pendientes.length})</div></div>
                 <div class="table-container"><table class="data-table">
                     <thead><tr><th>Solicitante</th><th>Mascota</th><th>Veterinario</th><th>Cita actual</th><th>Solicita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>${pendientes.map(s => solRow(s, true)).join('')}</tbody>
                 </table></div>
-            </div>` : `<div class="empty-state" style="margin-bottom:20px"><div class="empty-icon">✅</div><p>Sin solicitudes pendientes.</p></div>`}
+            </div>` : `<div class="empty-state" style="margin-bottom:20px"><div class="empty-icon">${Icons.checkCircle(52)}</div><p>Sin solicitudes pendientes.</p></div>`}
             ${resto.length ? `
             <div class="card">
                 <div class="card-header"><div class="card-title">Historial reciente</div></div>
@@ -849,7 +903,7 @@ const Views = {
         const estadoColor = { pendiente:'badge-orange', aprobada:'badge-green', rechazada:'badge-red' };
         let html = '';
         if (!sorted.length) {
-            html = `<div class="empty-state"><div class="empty-icon">🔄</div><p>No tienes solicitudes de reprogramación.</p></div>`;
+            html = `<div class="empty-state"><div class="empty-icon">${Icons.arrowLeftRight(52)}</div><p>No tienes solicitudes de reprogramación.</p></div>`;
         } else {
             html = sorted.map(s => {
                 const cita = findIn(citas, s.citaId);
@@ -891,7 +945,7 @@ const Views = {
         const myPets = pets.filter(p => uniquePetIds.includes(p.id));
 
         if (!myPets.length) {
-            vc(`<div class="empty-state"><div class="empty-icon">🐾</div><p>Aún no tienes pacientes asignados.</p></div>`);
+            vc(`<div class="empty-state"><div class="empty-icon">${Icons.paw(52)}</div><p>Aún no tienes pacientes asignados.</p></div>`);
             return;
         }
 
@@ -900,12 +954,16 @@ const Views = {
             const petCitas = citas.filter(c => c.mascotaId === pet.id).sort((a,b) => b.fecha.localeCompare(a.fecha));
             return `<div class="expediente-card">
                 <div class="exp-header">
-                    <div class="exp-icon">${petEmoji(pet.especie)}</div>
-                    <div style="flex:1">
+                    <div class="exp-icon">${Icons.paw(28)}</div>
+                    <div class="exp-info">
                         <div class="exp-name">${h(pet.nombre)}</div>
-                        <div class="exp-species">${h(pet.especie)} · ${h(pet.raza||'-')} · ${pet.edad} años · ${h(pet.color||'-')}</div>
+                        <div class="exp-species">${h(pet.especie)}${pet.raza ? ' · ' + h(pet.raza) : ''} · ${pet.edad} año${pet.edad!=1?'s':''} · ${h(pet.color||'-')}</div>
                     </div>
-                    <button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${pet.id}','${h(pet.nombre)}')">Ver historial completo</button>
+                    ${estadoSaludBadge(pet.estadoSalud)}
+                </div>
+                <div class="exp-controls">
+                    ${estadoSaludSelect(pet.id, pet.estadoSalud, 'Pets.setEstadoSalud')}
+                    <button class="btn btn-ghost btn-sm" onclick="PetHistorial.open('${pet.id}','${h(pet.nombre)}')">Ver historial</button>
                 </div>
                 <div class="exp-owner">
                     <span class="exp-label">Dueño:</span> ${dueno ? h(dueno.nombre)+' '+h(dueno.apellido) : '-'}
@@ -1126,6 +1184,13 @@ const Pets = {
         catch(err) { Toast.show(err.error||'Error','error'); }
         finally { Loading.hide(); }
     },
+    async setEstadoSalud(petId, estadoSalud) {
+        try {
+            await API.put(`/mascotas/${petId}`, { estadoSalud });
+            const label = ESTADOS_SALUD.find(e => e.value === estadoSalud)?.label || 'Sin registro';
+            Toast.show(`Estado actualizado: ${label}`, 'success');
+        } catch(err) { Toast.show(err.error || 'Error al actualizar estado', 'error'); }
+    },
 };
 
 function petForm(m, duenos) {
@@ -1154,6 +1219,12 @@ function petForm(m, duenos) {
             <select name="tamano" required><option value="">Seleccionar...</option>${tamanoOpts}</select>
         </div>
         ${duenoField}
+        ${state.role === 'admin' ? `
+        <div class="form-group"><label>Estado de salud</label>
+            <select name="estadoSalud">
+                ${ESTADOS_SALUD.map(e=>`<option value="${h(e.value)}" ${(m.estadoSalud||'')===e.value?'selected':''}>${h(e.label)}</option>`).join('')}
+            </select>
+        </div>` : ''}
         <input type="hidden" name="id" value="${h(m.id||'')}">
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
@@ -1280,7 +1351,7 @@ const Appts = {
 };
 
 function apptForm(c, pets, vets) {
-    const petOpts    = pets.map(m  => `<option value="${h(m.id)}"  ${c.mascotaId===m.id?'selected':''}>${petEmoji(m.especie)} ${h(m.nombre)} (${h(m.especie)})</option>`).join('');
+    const petOpts    = pets.map(m  => `<option value="${h(m.id)}"  ${c.mascotaId===m.id?'selected':''}>${h(m.nombre)} (${h(m.especie)})</option>`).join('');
     const selVet     = vets.find(v => v.id === c.veterinarioId);
     const vetOpts    = vets.map(v  => `<option value="${h(v.id)}"  ${c.veterinarioId===v.id?'selected':''}>Dr. ${h(v.nombre)} ${h(v.apellido)} — ${h(v.especialidad)}</option>`).join('');
     const horaSlots  = selVet ? timeSlotsForVet(selVet.horario) : timeSlots();
@@ -1501,10 +1572,15 @@ const Modal = {
    ============================================= */
 const Toast = {
     show(msg, type = 'info') {
-        const icons = { success:'✓', error:'✕', warning:'⚠', info:'ℹ' };
+        const icons = {
+            success: Icons.checkCircle(),
+            error:   Icons.xCircle(),
+            warning: Icons.alertTriangle(),
+            info:    Icons.info(),
+        };
         const el    = document.createElement('div');
         el.className = `toast ${type}`;
-        el.innerHTML = `<span>${icons[type]||'ℹ'}</span> ${h(msg)}`;
+        el.innerHTML = `${icons[type] || Icons.info()} ${h(msg)}`;
         document.getElementById('toast-container').appendChild(el);
         setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(16px)'; }, 2700);
         setTimeout(() => el.remove(), 3000);

@@ -44,10 +44,23 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-    if (req.user.role === 'vet') return res.status(403).json({ error: 'Sin permiso' });
     const db  = read();
     const idx = db.mascotas.findIndex(m => m.id === req.params.id);
     if (idx < 0) return res.status(404).json({ error: 'No encontrado' });
+
+    if (req.user.role === 'vet') {
+        // El vet solo puede actualizar estadoSalud de sus pacientes
+        const petIds = [...new Set(
+            db.citas.filter(c => c.veterinarioId === req.user.id).map(c => c.mascotaId)
+        )];
+        if (!petIds.includes(req.params.id))
+            return res.status(403).json({ error: 'Sin permiso' });
+        if (req.body.estadoSalud !== undefined)
+            db.mascotas[idx].estadoSalud = req.body.estadoSalud;
+        write(db);
+        return res.json(db.mascotas[idx]);
+    }
+
     if (req.user.role === 'owner' && db.mascotas[idx].duenoId !== req.user.id)
         return res.status(403).json({ error: 'Sin permiso' });
     db.mascotas[idx] = { ...db.mascotas[idx], ...req.body, id: req.params.id };
