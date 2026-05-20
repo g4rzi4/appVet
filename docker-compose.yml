@@ -1,0 +1,14 @@
+services:
+  vetcare:
+    build: .
+    container_name: vetcare
+    ports:
+      - "3001:3001"
+    volumes:
+      - vetcare_data:/app/backend/data
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+volumes:
+  vetcare_data:
