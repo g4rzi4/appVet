@@ -112,6 +112,19 @@
       "id": "mpd946nmh7jvf"
     }
   ],
+  "solicitudes": [
+    {
+      "id": "mpdgmwenubd1j",
+      "citaId": "mpdgki0w65itl",
+      "solicitanteId": "o1",
+      "solicitanteRole": "owner",
+      "fechaSolicitada": "2026-06-03",
+      "horaSolicitada": "17:00",
+      "motivo": "Me equivoqué de día",
+      "estado": "aprobada",
+      "creadaEn": "2026-05-20T02:46:11.087Z"
+    }
+  ],
   "citas": [
     {
       "mascotaId": "mpd7m3gtrq8xk",
@@ -139,9 +152,19 @@
       "fecha": "2026-05-20",
       "hora": "16:00",
       "motivo": "Control",
-      "estado": "pendiente",
+      "estado": "confirmada",
       "notas": "Le salió una mancha roja en la pata izquierda.",
       "id": "mpd95wdcbu5yt"
+    },
+    {
+      "mascotaId": "m2",
+      "veterinarioId": "mp7iop4ouz6t0",
+      "fecha": "2026-06-03",
+      "hora": "17:00",
+      "motivo": "Control",
+      "estado": "pendiente",
+      "notas": "Escupe mucho pelo.",
+      "id": "mpdgki0w65itl"
     }
   ]
 }

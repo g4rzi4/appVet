@@ -17,6 +17,7 @@ app.use('/api/veterinarios', require('./routes/veterinarios'));
 app.use('/api/duenos',       require('./routes/duenos'));
 app.use('/api/mascotas',     require('./routes/mascotas'));
 app.use('/api/citas',        require('./routes/citas'));
+app.use('/api/solicitudes',  require('./routes/solicitudes'));
 
 // SPA fallback
 app.get('*', (_, res) =>
