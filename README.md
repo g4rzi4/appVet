@@ -60,14 +60,9 @@ appVet/
 
 ## Accesos de prueba
 
-| Rol           | Email                  | Contraseña | Registro       |
+| Rol           | Email                  | Contraseña | 
 |---------------|------------------------|------------|----------------|
-| Administrador | admin@vetcare.com      | Admin123   | Hardcoded      |
-| Veterinario   | carlos@vetcare.com     | Vetcare1   | Solo via admin |
-| Veterinario   | maria@vetcare.com      | Vetcare1   | Solo via admin |
-| Veterinario   | roberto@vetcare.com    | Vetcare1   | Solo via admin |
-| Dueño demo    | ana@example.com        | Dueno123   | Auto-registro  |
-
+| Administrador | admin@vetcare.com      | Admin123   |
 > Los veterinarios **solo pueden ser registrados por el administrador**. Sus emails deben terminar en `@vetcare.com`.  
 > Los dueños pueden registrarse libremente desde la pantalla de login (no se permiten emails `@vetcare.com`).
 
