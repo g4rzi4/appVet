@@ -55,6 +55,22 @@
             </form>
             <p class="auth-switch">¿Ya tienes cuenta? <a href="#" onclick="showPanel('login-panel');return false">Inicia sesión</a></p>
         </div>
+
+        <div id="change-password-panel" style="display:none">
+            <h2>Crear Nueva Contraseña</h2>
+            <p style="color:var(--text-secondary);font-size:.875rem;margin-bottom:1rem">Es tu primer acceso. Elige una contraseña personal para continuar.</p>
+            <form onsubmit="Auth.changePassword(event)">
+                <div class="form-group">
+                    <label>Nueva Contraseña</label>
+                    <input type="password" id="new-password" required minlength="8" placeholder="Mínimo 8 caracteres, una mayúscula">
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Contraseña</label>
+                    <input type="password" id="confirm-password" required minlength="8" placeholder="Repite tu nueva contraseña">
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Guardar Contraseña</button>
+            </form>
+        </div>
     </div>
 </div>
 

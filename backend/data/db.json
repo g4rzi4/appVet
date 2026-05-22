@@ -68,6 +68,16 @@
       "password": "F1234567",
       "telefono": "5561770806",
       "direccion": "Cd. Nezahualcoyotl, Edo. Mex."
+    },
+    {
+      "nombre": "Alfredo",
+      "apellido": "Adame",
+      "email": "adame@gmail.com",
+      "telefono": "8822736514",
+      "direccion": "Polanco, CDMX",
+      "id": "mphhgzlb0twat",
+      "password": "A1234567",
+      "mustChangePassword": false
     }
   ],
   "mascotas": [
@@ -114,6 +124,16 @@
       "duenoId": "mpd91lh53ap1u",
       "id": "mpd946nmh7jvf",
       "estadoSalud": "grave"
+    },
+    {
+      "nombre": "Andrea",
+      "especie": "Reptil",
+      "raza": "Boa",
+      "color": "Verde",
+      "edad": 1,
+      "tamano": "Pequeño",
+      "duenoId": "mphhgzlb0twat",
+      "id": "mphhi2834gq0r"
     }
   ],
   "solicitudes": [
@@ -146,7 +166,7 @@
       "fecha": "2026-05-20",
       "hora": "14:00",
       "motivo": "Vacunación",
-      "estado": "confirmada",
+      "estado": "completada",
       "notas": "El día 20 de mayo acabo consulta a las 16:30 horas.",
       "id": "mpd8rfsx8m7p5"
     },
@@ -156,7 +176,7 @@
       "fecha": "2026-05-20",
       "hora": "16:00",
       "motivo": "Control",
-      "estado": "confirmada",
+      "estado": "completada",
       "notas": "Le salió una mancha roja en la pata izquierda.",
       "id": "mpd95wdcbu5yt"
     },

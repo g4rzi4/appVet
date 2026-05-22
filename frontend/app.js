@@ -227,10 +227,42 @@ const Auth = {
         try {
             const data = await API.post('/auth/login', { email, password });
             if (!data) return;
+            if (data.mustChangePassword) {
+                localStorage.setItem('vc_token', data.token);
+                showAuth();
+                showPanel('change-password-panel');
+                return;
+            }
             saveSession(data);
             await bootApp();
         } catch (err) {
             Toast.show(err.error || 'Error al iniciar sesión', 'error');
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async changePassword(e) {
+        e.preventDefault();
+        const newPassword     = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        if (newPassword !== confirmPassword) {
+            Toast.show('Las contraseñas no coinciden', 'error');
+            return;
+        }
+        if (!validPassword(newPassword)) {
+            Toast.show('La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula', 'error');
+            return;
+        }
+        Loading.show();
+        try {
+            const data = await API.post('/auth/change-password', { newPassword });
+            if (!data) return;
+            saveSession(data);
+            await bootApp();
+            Toast.show('¡Contraseña creada exitosamente! Bienvenido.', 'success');
+        } catch (err) {
+            Toast.show(err.error || 'Error al cambiar contraseña', 'error');
         } finally {
             Loading.hide();
         }
@@ -289,8 +321,9 @@ function showAuth() {
 }
 
 function showPanel(id) {
-    document.getElementById('login-panel').style.display    = id === 'login-panel'    ? 'block' : 'none';
-    document.getElementById('register-panel').style.display = id === 'register-panel' ? 'block' : 'none';
+    document.getElementById('login-panel').style.display           = id === 'login-panel'           ? 'block' : 'none';
+    document.getElementById('register-panel').style.display        = id === 'register-panel'        ? 'block' : 'none';
+    document.getElementById('change-password-panel').style.display = id === 'change-password-panel' ? 'block' : 'none';
 }
 
 async function bootApp() {
@@ -1006,10 +1039,28 @@ const Vets = {
         if (!data.password) delete data.password;
         Loading.show();
         try {
-            if (data.id) { await API.put(`/veterinarios/${data.id}`, data); Toast.show('Veterinario actualizado','success'); }
-            else         { await API.post('/veterinarios', data);           Toast.show('Veterinario agregado','success'); }
-            Modal.close();
-            await navigate('veterinarios');
+            if (data.id) {
+                await API.put(`/veterinarios/${data.id}`, data);
+                Toast.show('Veterinario actualizado', 'success');
+                Modal.close();
+                await navigate('veterinarios');
+            } else {
+                const result = await API.post('/veterinarios', data);
+                Modal.close();
+                await navigate('veterinarios');
+                Modal.open('Contraseña Temporal', `
+                    <div style="text-align:center;padding:.5rem 0">
+                        <p style="margin-bottom:1rem;color:var(--text-secondary)">
+                            Comparte esta contraseña con el doctor. Deberá cambiarla en su primer acceso.
+                        </p>
+                        <div style="background:var(--bg-secondary);border:2px dashed var(--border);border-radius:.5rem;padding:1rem 1.5rem;font-size:1.5rem;font-weight:700;letter-spacing:.15em;font-family:monospace;color:var(--primary)">
+                            ${h(result.tempPassword)}
+                        </div>
+                        <p style="margin-top:.75rem;font-size:.8rem;color:var(--text-muted)">Email: ${h(result.email)}</p>
+                    </div>
+                    <div class="modal-footer"><button class="btn btn-primary" onclick="Modal.close()">Entendido</button></div>
+                `);
+            }
         } catch (err) { Toast.show(err.error||'Error al guardar','error'); }
         finally { Loading.hide(); }
     },
@@ -1036,14 +1087,14 @@ function vetForm(v) {
             <div class="form-group"><label>Teléfono</label><input name="telefono" type="tel" value="${h(v.telefono||'')}"></div>
             <div class="form-group">
                 <label>Email <small style="color:var(--text-muted)">(debe ser @vetcare.com)</small></label>
-                <input name="email" type="email" value="${h(v.email||'')}" placeholder="nombre@vetcare.com" required>
+                <input name="email" type="email" value="${h(v.email||'')}" placeholder="nombre@vetcare.com" required ${v.id?'readonly':''}>
             </div>
         </div>
         <div class="form-group"><label>Horario</label><input name="horario" type="text" value="${h(v.horario||'')}" placeholder="Ej: Lun-Vie 8:00-17:00"></div>
-        <div class="form-group">
-            <label>${v.id ? 'Nueva Contraseña (vacío = mantener)' : 'Contraseña de acceso'}</label>
-            <input name="password" type="password" ${!v.id?'required minlength="8"':''} placeholder="Mínimo 8 caracteres, una mayúscula">
-        </div>
+        ${v.id ? `<div class="form-group">
+            <label>Nueva Contraseña (vacío = mantener)</label>
+            <input name="password" type="password" placeholder="Mínimo 8 caracteres, una mayúscula">
+        </div>` : `<p style="font-size:.8rem;color:var(--text-secondary);margin:.25rem 0 .75rem">Se generará una contraseña temporal automáticamente.</p>`}
         <input type="hidden" name="id" value="${h(v.id||'')}">
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
@@ -1073,10 +1124,28 @@ const Duenos = {
         if (!data.password) delete data.password;
         Loading.show();
         try {
-            if (data.id) { await API.put(`/duenos/${data.id}`, data); Toast.show('Dueño actualizado','success'); }
-            else         { await API.post('/duenos', data);            Toast.show('Dueño agregado','success'); }
-            Modal.close();
-            await navigate('duenos');
+            if (data.id) {
+                await API.put(`/duenos/${data.id}`, data);
+                Toast.show('Dueño actualizado', 'success');
+                Modal.close();
+                await navigate('duenos');
+            } else {
+                const result = await API.post('/duenos', data);
+                Modal.close();
+                await navigate('duenos');
+                Modal.open('Contraseña Temporal', `
+                    <div style="text-align:center;padding:.5rem 0">
+                        <p style="margin-bottom:1rem;color:var(--text-secondary)">
+                            Comparte esta contraseña con el dueño. Deberá cambiarla en su primer acceso.
+                        </p>
+                        <div style="background:var(--bg-secondary);border:2px dashed var(--border);border-radius:.5rem;padding:1rem 1.5rem;font-size:1.5rem;font-weight:700;letter-spacing:.15em;font-family:monospace;color:var(--primary)">
+                            ${h(result.tempPassword)}
+                        </div>
+                        <p style="margin-top:.75rem;font-size:.8rem;color:var(--text-muted)">Email: ${h(result.email)}</p>
+                    </div>
+                    <div class="modal-footer"><button class="btn btn-primary" onclick="Modal.close()">Entendido</button></div>
+                `);
+            }
         } catch(err) { Toast.show(err.error||'Error al guardar','error'); }
         finally { Loading.hide(); }
     },
@@ -1118,13 +1187,13 @@ function duenoForm(d) {
             <div class="form-group"><label>Nombre</label><input name="nombre" type="text" value="${h(d.nombre||'')}" required></div>
             <div class="form-group"><label>Apellido</label><input name="apellido" type="text" value="${h(d.apellido||'')}" required></div>
         </div>
-        <div class="form-group"><label>Email</label><input name="email" type="email" value="${h(d.email||'')}" required></div>
+        <div class="form-group"><label>Email</label><input name="email" type="email" value="${h(d.email||'')}" required ${d.id?'readonly':''}></div>
         <div class="form-group"><label>Teléfono</label><input name="telefono" type="tel" value="${h(d.telefono||'')}"></div>
         <div class="form-group"><label>Dirección</label><input name="direccion" type="text" value="${h(d.direccion||'')}"></div>
-        <div class="form-group">
-            <label>${d.id ? 'Nueva Contraseña (vacío = mantener)' : 'Contraseña'}</label>
-            <input name="password" type="password" ${!d.id?'required minlength="8"':''} placeholder="Mínimo 8 caracteres, una mayúscula">
-        </div>
+        ${d.id ? `<div class="form-group">
+            <label>Nueva Contraseña (vacío = mantener)</label>
+            <input name="password" type="password" placeholder="Mínimo 8 caracteres, una mayúscula">
+        </div>` : `<p style="font-size:.8rem;color:var(--text-secondary);margin:.25rem 0 .75rem">Se generará una contraseña temporal automáticamente.</p>`}
         <input type="hidden" name="id" value="${h(d.id||'')}">
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>

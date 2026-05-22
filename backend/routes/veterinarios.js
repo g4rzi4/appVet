@@ -3,6 +3,17 @@ const router               = express.Router();
 const { read, write, uid }        = require('../data/db');
 const { requireAuth, adminOnly }  = require('../middleware/auth');
 
+function generateTempPassword() {
+    const upper  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower  = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    let pwd = '';
+    for (let i = 0; i < 2; i++) pwd += upper[Math.floor(Math.random()  * upper.length)];
+    for (let i = 0; i < 4; i++) pwd += lower[Math.floor(Math.random()  * lower.length)];
+    for (let i = 0; i < 2; i++) pwd += digits[Math.floor(Math.random() * digits.length)];
+    return pwd.split('').sort(() => Math.random() - 0.5).join('');
+}
+
 router.use(requireAuth);
 
 const strip = ({ password, ...rest }) => rest;
@@ -25,16 +36,16 @@ router.get('/:id', (req, res) => {
 router.post('/', adminOnly, (req, res) => {
     if (!req.body.email || !req.body.email.endsWith('@vetcare.com'))
         return res.status(400).json({ error: 'El email debe terminar en @vetcare.com' });
-    if (!req.body.password)
-        return res.status(400).json({ error: 'La contraseña es requerida' });
-    if (req.body.password.length < 8 || !/[A-Z]/.test(req.body.password))
-        return res.status(400).json({ error: 'La contraseña debe tener mínimo 8 caracteres y al menos una mayúscula' });
 
-    const db   = read();
-    const item = { ...req.body, id: uid() };
+    const db = read();
+    if (db.veterinarios.find(v => v.email === req.body.email))
+        return res.status(400).json({ error: 'Email ya registrado' });
+
+    const tempPassword = generateTempPassword();
+    const item = { ...req.body, id: uid(), password: tempPassword, mustChangePassword: true };
     db.veterinarios.push(item);
     write(db);
-    res.status(201).json(strip(item));
+    res.status(201).json({ ...strip(item), tempPassword });
 });
 
 router.put('/:id', adminOnly, (req, res) => {

@@ -3,6 +3,17 @@ const router               = express.Router();
 const { read, write, uid }        = require('../data/db');
 const { requireAuth, adminOnly }  = require('../middleware/auth');
 
+function generateTempPassword() {
+    const upper  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower  = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    let pwd = '';
+    for (let i = 0; i < 2; i++) pwd += upper[Math.floor(Math.random()  * upper.length)];
+    for (let i = 0; i < 4; i++) pwd += lower[Math.floor(Math.random()  * lower.length)];
+    for (let i = 0; i < 2; i++) pwd += digits[Math.floor(Math.random() * digits.length)];
+    return pwd.split('').sort(() => Math.random() - 0.5).join('');
+}
+
 router.use(requireAuth);
 
 const strip = ({ password, ...rest }) => rest;
@@ -32,10 +43,11 @@ router.post('/', adminOnly, (req, res) => {
     const db = read();
     if (db.duenos.find(d => d.email === req.body.email))
         return res.status(400).json({ error: 'Email ya registrado' });
-    const item = { ...req.body, id: uid() };
+    const tempPassword = generateTempPassword();
+    const item = { ...req.body, id: uid(), password: tempPassword, mustChangePassword: true };
     db.duenos.push(item);
     write(db);
-    res.status(201).json(strip(item));
+    res.status(201).json({ ...strip(item), tempPassword });
 });
 
 // Admin=cualquiera, owner=solo el propio, vet=sin permiso
